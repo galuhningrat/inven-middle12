@@ -1,0 +1,35 @@
+/* Custom Styling untuk Tabel Pendidikan */
+.table-hover tbody tr:hover {
+    background-color: #f8f9fa;
+    transition: all 0.2s ease;
+}
+
+.badge-primary {
+    background-color: #3699ff;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+}
+
+.badge-light-info {
+    background-color: #e1f5fe;
+    color: #0277bd;
+    padding: 5px 10px;
+    border-radius: 4px;
+}
+
+/* Empty State Animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.py-10 {
+    animation: fadeIn 0.5s ease;
+}

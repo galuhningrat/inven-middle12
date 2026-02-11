@@ -1,0 +1,320 @@
+<?php
+
+namespace App\Helpers;
+
+class MenuHelper
+{
+    /**
+     * Get menu berdasarkan role ID
+     * Super Admin (ID 1) mendapat SEMUA menu
+     */
+    public static function getMenuByRole($roleId)
+    {
+        // ========== SUPER ADMIN: FULL ACCESS ==========
+        if ($roleId == 1) {
+            return [
+                'dashboard' => [
+                    'title' => 'Dashboard',
+                    'route' => 'dashboard',
+                    'icon' => 'bi bi-speedometer2'
+                ],
+                'data_master' => [
+                    'title' => 'Data Master',
+                    'icon' => 'bi bi-folder',
+                    'submenu' => [
+                        ['title' => 'Fakultas', 'route' => 'fakultas.index'],
+                        ['title' => 'Program Studi', 'route' => 'data-prodi.index'],
+                        ['title' => 'Tahun Akademik', 'route' => 'tahun-akademik.index'],
+                        ['title' => 'Rombel', 'route' => 'rombel.index'],
+                        ['title' => 'Ruangan', 'route' => 'ruangan.index'],
+                    ]
+                ],
+                'dosen' => [
+                    'title' => 'Data Dosen',
+                    'route' => 'dosen.index',
+                    'icon' => 'bi bi-person-lines-fill'
+                ],
+                'mahasiswa' => [
+                    'title' => 'Data Mahasiswa',
+                    'route' => 'mahasiswa.index',
+                    'icon' => 'bi bi-person-circle'
+                ],
+                'karyawan' => [
+                    'title' => 'Data Karyawan',
+                    'route' => 'karyawan.index',
+                    'icon' => 'bi bi-person-badge-fill'
+                ],
+                'matakuliah' => [
+                    'title' => 'Mata Kuliah',
+                    'route' => 'matakuliah.index',
+                    'icon' => 'bi bi-book'
+                ],
+                'jadwal' => [
+                    'title' => 'Jadwal Kuliah',
+                    'route' => 'jadwal.index',
+                    'icon' => 'bi bi-journals'
+                ],
+                'krs' => [
+                    'title' => 'Rencana Studi (KRS)',
+                    'route' => 'krs.index',
+                    'icon' => 'bi bi-file-earmark-text'
+                ],
+                'keuangan' => [
+                    'title' => 'Keuangan',
+                    'icon' => 'bi bi-cash-stack',
+                    'submenu' => [
+                        ['title' => 'Komponen Biaya', 'route' => 'komponen-biaya.index'],
+                        ['title' => 'Tagihan Mahasiswa', 'route' => 'tagihan.index'],
+                        ['title' => 'Validasi Pembayaran', 'route' => 'pembayaran.index'],
+                    ]
+                ],
+                'operasional' => [
+                    'title' => 'Operasional',
+                    'icon' => 'bi bi-building',
+                    'submenu' => [
+                        ['title' => 'Inventaris', 'route' => 'inventaris.index'],
+                        ['title' => 'Arsip Dokumen', 'route' => 'arsip.index'],
+                    ]
+                ],
+                'pengguna' => [
+                    'title' => 'Master Pengguna',
+                    'icon' => 'bi bi-people-fill',
+                    'submenu' => [
+                        ['title' => 'Data Pengguna', 'route' => 'master-pengguna.index'],
+                        ['title' => 'Role & Permission', 'route' => 'master-role.index'],
+                        ['title' => 'Login Session', 'route' => 'master-session.index'],
+                    ]
+                ],
+                'laporan' => [
+                    'title' => 'Laporan & Analitik',
+                    'icon' => 'bi bi-graph-up-arrow',
+                    'submenu' => [
+                        ['title' => 'Dashboard Eksekutif', 'route' => 'laporan.eksekutif'],
+                        ['title' => 'Laporan Fakultas', 'route' => 'laporan.fakultas'],
+                        ['title' => 'Laporan Prodi', 'route' => 'laporan.prodi'],
+                    ]
+                ],
+            ];
+        }
+
+        // ========== ADMIN AKADEMIK (ID 2) ==========
+        if ($roleId == 2) {
+            return [
+                'dashboard' => [
+                    'title' => 'Dashboard',
+                    'route' => 'dashboard',
+                    'icon' => 'bi bi-speedometer2'
+                ],
+                'data_master' => [
+                    'title' => 'Data Master',
+                    'icon' => 'bi bi-folder',
+                    'submenu' => [
+                        ['title' => 'Fakultas', 'route' => 'fakultas.index'],
+                        ['title' => 'Program Studi', 'route' => 'data-prodi.index'],
+                        ['title' => 'Tahun Akademik', 'route' => 'tahun-akademik.index'],
+                        ['title' => 'Rombel', 'route' => 'rombel.index'],
+                        ['title' => 'Ruangan', 'route' => 'ruangan.index'],
+                    ]
+                ],
+                'dosen' => [
+                    'title' => 'Data Dosen',
+                    'route' => 'dosen.index',
+                    'icon' => 'bi bi-person-lines-fill'
+                ],
+                'mahasiswa' => [
+                    'title' => 'Data Mahasiswa',
+                    'route' => 'mahasiswa.index',
+                    'icon' => 'bi bi-person-circle'
+                ],
+                'matakuliah' => [
+                    'title' => 'Mata Kuliah',
+                    'route' => 'matakuliah.index',
+                    'icon' => 'bi bi-book'
+                ],
+                'jadwal' => [
+                    'title' => 'Jadwal Kuliah',
+                    'route' => 'jadwal.index',
+                    'icon' => 'bi bi-journals'
+                ],
+                'krs' => [
+                    'title' => 'Rencana Studi (KRS)',
+                    'route' => 'krs.index',
+                    'icon' => 'bi bi-file-earmark-text'
+                ],
+            ];
+        }
+
+        // ========== BAGIAN KEUANGAN (ID 3) ==========
+        if ($roleId == 3) {
+            return [
+                'dashboard' => [
+                    'title' => 'Dashboard',
+                    'route' => 'dashboard',
+                    'icon' => 'bi bi-speedometer2'
+                ],
+                'mahasiswa' => [
+                    'title' => 'Data Mahasiswa',
+                    'route' => 'mahasiswa.index',
+                    'icon' => 'bi bi-person-circle'
+                ],
+                'keuangan' => [
+                    'title' => 'Keuangan',
+                    'icon' => 'bi bi-cash-stack',
+                    'submenu' => [
+                        ['title' => 'Komponen Biaya', 'route' => 'komponen-biaya.index'],
+                        ['title' => 'Tagihan Mahasiswa', 'route' => 'tagihan.index'],
+                        ['title' => 'Validasi Pembayaran', 'route' => 'pembayaran.index'],
+                    ]
+                ],
+            ];
+        }
+
+        // ========== REKTOR (ID 4) ==========
+        if ($roleId == 4) {
+            return [
+                'dashboard' => [
+                    'title' => 'Dashboard Eksekutif',
+                    'route' => 'dashboard',
+                    'icon' => 'bi bi-speedometer2'
+                ],
+                'laporan' => [
+                    'title' => 'Laporan & Analitik',
+                    'icon' => 'bi bi-graph-up-arrow',
+                    'submenu' => [
+                        ['title' => 'Dashboard Eksekutif', 'route' => 'laporan.eksekutif'],
+                        ['title' => 'Laporan Fakultas', 'route' => 'laporan.fakultas'],
+                        ['title' => 'Laporan Prodi', 'route' => 'laporan.prodi'],
+                    ]
+                ],
+            ];
+        }
+
+        // ========== DEKAN (ID 5) ==========
+        if ($roleId == 5) {
+            return [
+                'dashboard' => [
+                    'title' => 'Dashboard Fakultas',
+                    'route' => 'dashboard',
+                    'icon' => 'bi bi-speedometer2'
+                ],
+                'mahasiswa' => [
+                    'title' => 'Data Mahasiswa',
+                    'route' => 'mahasiswa.index',
+                    'icon' => 'bi bi-person-circle'
+                ],
+                'laporan' => [
+                    'title' => 'Laporan Fakultas',
+                    'route' => 'laporan.fakultas',
+                    'icon' => 'bi bi-graph-up-arrow'
+                ],
+            ];
+        }
+
+        // ========== KAPRODI (ID 6) ==========
+        if ($roleId == 6) {
+            return [
+                'dashboard' => [
+                    'title' => 'Dashboard Prodi',
+                    'route' => 'dashboard',
+                    'icon' => 'bi bi-speedometer2'
+                ],
+                'mahasiswa' => [
+                    'title' => 'Data Mahasiswa',
+                    'route' => 'mahasiswa.index',
+                    'icon' => 'bi bi-person-circle'
+                ],
+                'matakuliah' => [
+                    'title' => 'Mata Kuliah',
+                    'route' => 'matakuliah.index',
+                    'icon' => 'bi bi-book'
+                ],
+                'jadwal' => [
+                    'title' => 'Jadwal Kuliah',
+                    'route' => 'jadwal.index',
+                    'icon' => 'bi bi-journals'
+                ],
+                'krs' => [
+                    'title' => 'Approval KRS',
+                    'route' => 'krs.index',
+                    'icon' => 'bi bi-file-earmark-check'
+                ],
+            ];
+        }
+
+        // ========== DOSEN (ID 7) ==========
+        if ($roleId == 7) {
+            return [
+                'dashboard' => [
+                    'title' => 'Dashboard',
+                    'route' => 'dashboard',
+                    'icon' => 'bi bi-speedometer2'
+                ],
+                'jadwal' => [
+                    'title' => 'Jadwal Mengajar',
+                    'route' => 'jadwal.index',
+                    'icon' => 'bi bi-journals'
+                ],
+                'krs' => [
+                    'title' => 'KRS Mahasiswa PA',
+                    'route' => 'krs.index',
+                    'icon' => 'bi bi-file-earmark-text'
+                ],
+            ];
+        }
+
+        // ========== MAHASISWA (ID 8) ==========
+        if ($roleId == 8) {
+            return [
+                'dashboard' => [
+                    'title' => 'Dashboard',
+                    'route' => 'dashboard',
+                    'icon' => 'bi bi-speedometer2'
+                ],
+                'profil' => [
+                    'title' => 'Profil',
+                    'icon' => 'bi bi-person',
+                    'submenu' => [
+                        ['title' => 'Biodata', 'route' => 'profil.biodata'],
+                        ['title' => 'Data Pendidikan', 'route' => 'profil.data-pendidikan'],
+                        ['title' => 'Data Orang Tua', 'route' => 'profil.data-orang-tua'],
+                        ['title' => 'Data Akademik', 'route' => 'profil.data-akademik'],
+                        ['title' => 'Dokumen', 'route' => 'profil.dokumen'],
+                    ]
+                ],
+            ];
+        }
+
+        // ========== KARYAWAN (ID 9) ==========
+        if ($roleId == 9) {
+            return [
+                'dashboard' => [
+                    'title' => 'Dashboard',
+                    'route' => 'dashboard',
+                    'icon' => 'bi bi-speedometer2'
+                ],
+                'karyawan' => [
+                    'title' => 'Data Karyawan',
+                    'route' => 'karyawan.index',
+                    'icon' => 'bi bi-person-badge-fill'
+                ],
+                'operasional' => [
+                    'title' => 'Operasional',
+                    'icon' => 'bi bi-building',
+                    'submenu' => [
+                        ['title' => 'Inventaris', 'route' => 'inventaris.index'],
+                        ['title' => 'Arsip Dokumen', 'route' => 'arsip.index'],
+                    ]
+                ],
+            ];
+        }
+
+        // Default: Dashboard only
+        return [
+            'dashboard' => [
+                'title' => 'Dashboard',
+                'route' => 'dashboard',
+                'icon' => 'bi bi-speedometer2'
+            ],
+        ];
+    }
+}
