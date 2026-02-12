@@ -565,7 +565,6 @@ class MahasiswaController extends Controller
 
     /**
      *  Helper Menentukan Predikat Kelulusan
-     * Letakkan di sini (di dalam class MahasiswaController)
      */
     private function getPredikatKelulusan($ipk)
     {
