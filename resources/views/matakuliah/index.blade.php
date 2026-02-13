@@ -24,6 +24,129 @@
 
         @include('master.notification')
 
+        {{-- ===== SEARCH & FILTER BAR ===== --}}
+        <div class="card mb-5 shadow-sm">
+            <div class="card-body py-4">
+                <form method="GET" action="{{ route('matakuliah.index') }}" id="filterForm">
+                    <div class="row g-3 align-items-end">
+                        {{-- Search Input --}}
+                        <div class="col-lg-4 col-md-6">
+                            <label class="form-label fw-semibold fs-7 mb-2">
+                                <i class="bi bi-search me-1"></i>Cari Mata Kuliah
+                            </label>
+                            <div class="input-group input-group-solid">
+                                <span class="input-group-text border-0 bg-light">
+                                    <i class="bi bi-search text-muted"></i>
+                                </span>
+                                <input type="text"
+                                    name="search"
+                                    class="form-control form-control-solid border-0 ps-0"
+                                    placeholder="Kode atau Nama Mata Kuliah..."
+                                    value="{{ request('search') }}">
+                                @if(request('search'))
+                                <button type="button"
+                                    class="btn btn-sm btn-icon btn-light-danger"
+                                    onclick="clearSearch()"
+                                    title="Hapus pencarian">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                                @endif
+                            </div>
+                        </div>
+
+                        {{-- Filter Prodi --}}
+                        <div class="col-lg-3 col-md-6">
+                            <label class="form-label fw-semibold fs-7 mb-2">
+                                <i class="bi bi-building me-1"></i>Program Studi
+                            </label>
+                            <select name="filter_prodi"
+                                class="form-select form-select-solid"
+                                data-control="select2"
+                                data-placeholder="Semua Prodi"
+                                data-allow-clear="true">
+                                <option></option>
+                                @foreach($prodi as $p)
+                                <option value="{{ $p->id }}" {{ request('filter_prodi') == $p->id ? 'selected' : '' }}>
+                                    {{ $p->nama_prodi }}
+                                </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        {{-- Filter Semester --}}
+                        <div class="col-lg-2 col-md-6">
+                            <label class="form-label fw-semibold fs-7 mb-2">
+                                <i class="bi bi-calendar3 me-1"></i>Semester
+                            </label>
+                            <select name="filter_semester"
+                                class="form-select form-select-solid"
+                                data-control="select2"
+                                data-placeholder="Semua Semester"
+                                data-allow-clear="true">
+                                <option></option>
+                                @for($s = 1; $s <= 14; $s++)
+                                <option value="{{ $s }}" {{ request('filter_semester') == $s ? 'selected' : '' }}>
+                                    Semester {{ $s }}
+                                </option>
+                                @endfor
+                            </select>
+                        </div>
+
+                        {{-- Action Buttons --}}
+                        <div class="col-lg-3 col-md-6">
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary flex-grow-1">
+                                    <i class="bi bi-funnel me-1"></i>Filter
+                                </button>
+                                <a href="{{ route('matakuliah.index') }}"
+                                   class="btn btn-light-secondary"
+                                   title="Reset Filter">
+                                    <i class="bi bi-arrow-clockwise"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Active Filters Display --}}
+                    @if(request('search') || request('filter_prodi') || request('filter_semester'))
+                    <div class="mt-4 pt-3 border-top border-gray-300">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <span class="text-muted fs-8 fw-semibold">Filter Aktif:</span>
+
+                            @if(request('search'))
+                            <span class="badge badge-light-primary fs-8">
+                                <i class="bi bi-search me-1"></i>
+                                Pencarian: "{{ request('search') }}"
+                            </span>
+                            @endif
+
+                            @if(request('filter_prodi'))
+                            @php
+                                $selectedProdi = $prodi->firstWhere('id', request('filter_prodi'));
+                            @endphp
+                            <span class="badge badge-light-info fs-8">
+                                <i class="bi bi-building me-1"></i>
+                                {{ $selectedProdi->nama_prodi ?? 'Prodi' }}
+                            </span>
+                            @endif
+
+                            @if(request('filter_semester'))
+                            <span class="badge badge-light-success fs-8">
+                                <i class="bi bi-calendar3 me-1"></i>
+                                Semester {{ request('filter_semester') }}
+                            </span>
+                            @endif
+
+                            <span class="text-muted fs-9">
+                                ({{ $matakuliah->count() }} hasil)
+                            </span>
+                        </div>
+                    </div>
+                    @endif
+                </form>
+            </div>
+        </div>
+
         {{-- ===== RINGKASAN STATISTIK ===== --}}
         <div class="row g-5 mb-7">
             <div class="col-12">
@@ -330,6 +453,12 @@
 
 @push('scripts')
 <script>
+    // Clear search function
+    function clearSearch() {
+        document.querySelector('input[name="search"]').value = '';
+        document.getElementById('filterForm').submit();
+    }
+
     // Buka accordion semester pertama secara otomatis saat tab aktif ditampilkan
     document.addEventListener('DOMContentLoaded', function () {
         const activeTab = document.querySelector('.nav-link.active');
@@ -353,6 +482,13 @@
                         new bootstrap.Collapse(firstCollapse, { toggle: true });
                     }
                 }
+            });
+        });
+
+        // Auto-submit on select change
+        document.querySelectorAll('select[name="filter_prodi"], select[name="filter_semester"]').forEach(function(select) {
+            select.addEventListener('change', function() {
+                document.getElementById('filterForm').submit();
             });
         });
     });
