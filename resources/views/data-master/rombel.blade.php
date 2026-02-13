@@ -71,34 +71,29 @@
                                         <td class="text-center">{{ $r->mahasiswa_count ?? '-' }}</td>
                                         <td>{{ $r->dosen->user->nama }}</td>
                                         <td class="text-center">
-                                            <!-- Detail Button -->
                                             <a href="{{ route('rombel.detail', $r->id) }}"
-                                               class="btn btn-icon btn-sm btn-light-primary me-2"
-                                               title="Detail">
+                                               class="btn btn-icon btn-sm btn-light-primary me-2" title="Detail">
                                                 <i class="bi bi-eye-fill fs-5"></i>
                                             </a>
-                                            <!-- Tambah Mahasiswa Button -->
-                                            <a href="{{ route('rombel.tambahMahasiswa', $r->id) }}" class="btn btn-icon btn-sm btn-light-info me-2" title="Tambah Mahasiswa ke Rombel">
+                                            <a href="{{ route('rombel.tambahMahasiswa', $r->id) }}"
+                                               class="btn btn-icon btn-sm btn-light-info me-2" title="Tambah Mahasiswa ke Rombel">
                                                 <i class="bi bi-person-plus-fill fs-5"></i>
                                             </a>
-                                            <!-- Edit Button -->
                                             <button type="button"
-                                                class="btn btn-icon btn-sm btn-light-success me-2"
-                                                title="Ubah"
+                                                class="btn btn-icon btn-sm btn-light-success me-2" title="Ubah"
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#modalEditRombel{{ $r->id }}">
                                                 <i class="bi bi-pencil-fill fs-5"></i>
                                             </button>
-                                            <!-- Delete Button -->
                                             <button type="button"
-                                                class="btn btn-icon btn-sm btn-light-danger"
-                                                title="Hapus"
+                                                class="btn btn-icon btn-sm btn-light-danger" title="Hapus"
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#modalDeleteRombel{{ $r->id }}">
                                                 <i class="bi bi-trash-fill fs-5"></i>
                                             </button>
                                         </td>
                                     </tr>
+
                                     <!-- Modal Detail Rombel -->
                                     <div class="modal fade" id="modalDetailRombel{{ $r->id }}" tabindex="-1" aria-hidden="true">
                                         <div class="modal-dialog modal-dialog-centered mw-650px">
@@ -126,6 +121,23 @@
                                             </div>
                                         </div>
                                     </div>
+
+                                    {{--
+                                    ╔══════════════════════════════════════════════════════╗
+                                    ║  BUG FIX #1 — Modal Edit Rombel                     ║
+                                    ║  SEBELUM: $r->tahun_akademik == $ta->id             ║
+                                    ║  SESUDAH: $r->tahun_masuk == $ta->id                ║
+                                    ║                                                      ║
+                                    ║  Penjelasan:                                         ║
+                                    ║  Foreign key di tabel rombel adalah 'tahun_masuk',  ║
+                                    ║  bukan 'tahun_akademik'. Field 'tahun_akademik'     ║
+                                    ║  tidak ada di model Rombel, sehingga kondisi        ║
+                                    ║  perbandingan selalu false → tidak ada option yang  ║
+                                    ║  ter-selected → saat submit, nilai lama tidak       ║
+                                    ║  terkirim dengan benar → data gagal tersimpan.      ║
+                                    ╚══════════════════════════════════════════════════════╝
+                                    --}}
+
                                     <!-- Modal Edit Rombel -->
                                     <div class="modal fade" id="modalEditRombel{{ $r->id }}" tabindex="-1" aria-hidden="true">
                                         <div class="modal-dialog modal-dialog-centered mw-650px">
@@ -141,12 +153,15 @@
                                                         <div class="row">
                                                             <div class="col-md-6 mb-10">
                                                                 <label class="form-label required">Kode Rombel</label>
-                                                                <input type="text" name="kode_rombel" class="form-control form-control-solid"
-                                                                    value="{{ $r->kode_rombel }}" maxlength="6" required />
+                                                                <input type="text" name="kode_rombel"
+                                                                    class="form-control form-control-solid"
+                                                                    value="{{ $r->kode_rombel }}"
+                                                                    maxlength="6" required />
                                                             </div>
                                                             <div class="col-md-6 mb-10">
                                                                 <label class="form-label required">Nama Rombel</label>
-                                                                <input type="text" name="nama_rombel" class="form-control form-control-solid"
+                                                                <input type="text" name="nama_rombel"
+                                                                    class="form-control form-control-solid"
                                                                     value="{{ $r->nama_rombel }}" required />
                                                             </div>
                                                         </div>
@@ -155,8 +170,10 @@
                                                                 <label class="form-label required">Tahun Masuk</label>
                                                                 <select name="tahun_masuk" class="form-select form-select-solid" required>
                                                                     @foreach($tahunAkademiks as $ta)
-                                                                        <option value="{{ $ta->id }}" {{ $r->tahun_akademik == $ta->id ? 'selected' : '' }}>
-                                                                            {{ $ta->tahun_awal }} {{ $ta->semester }}
+                                                                        {{-- FIX: Ganti $r->tahun_akademik → $r->tahun_masuk --}}
+                                                                        <option value="{{ $ta->id }}"
+                                                                            {{ $r->tahun_masuk == $ta->id ? 'selected' : '' }}>
+                                                                            {{ $ta->tahun_awal }} - {{ $ta->semester }}
                                                                         </option>
                                                                     @endforeach
                                                                 </select>
@@ -165,7 +182,8 @@
                                                                 <label class="form-label required">Program Studi</label>
                                                                 <select name="id_prodi" class="form-select form-select-solid" required>
                                                                     @foreach($prodis as $prodi)
-                                                                        <option value="{{ $prodi->id }}" {{ $r->id_prodi == $prodi->id ? 'selected' : '' }}>
+                                                                        <option value="{{ $prodi->id }}"
+                                                                            {{ $r->id_prodi == $prodi->id ? 'selected' : '' }}>
                                                                             {{ $prodi->nama_prodi }}
                                                                         </option>
                                                                     @endforeach
@@ -177,7 +195,8 @@
                                                                 <label class="form-label required">Dosen Pembimbing Akademik</label>
                                                                 <select name="id_dosen" class="form-select form-select-solid" required>
                                                                     @foreach($dosen as $dos)
-                                                                        <option value="{{ $dos->id }}" {{ $r->id_dosen == $dos->id ? 'selected' : '' }}>
+                                                                        <option value="{{ $dos->id }}"
+                                                                            {{ $r->id_dosen == $dos->id ? 'selected' : '' }}>
                                                                             {{ $dos->user->nama }}
                                                                         </option>
                                                                     @endforeach
@@ -193,8 +212,10 @@
                                             </div>
                                         </div>
                                     </div>
+
                                     <!-- Modal Delete Rombel -->
-                                    <div class="modal fade" id="modalDeleteRombel{{ $r->id }}" tabindex="-1" aria-labelledby="modalDeleteRombelLabel{{ $r->id }}" aria-hidden="true">
+                                    <div class="modal fade" id="modalDeleteRombel{{ $r->id }}" tabindex="-1"
+                                         aria-labelledby="modalDeleteRombelLabel{{ $r->id }}" aria-hidden="true">
                                         <div class="modal-dialog modal-dialog-centered">
                                             <div class="modal-content">
                                                 <form action="{{ route('rombel.destroy', $r->id) }}" method="POST">
@@ -223,6 +244,7 @@
             </div>
         </div>
     </div>
+
     <!-- Modal Tambah Rombel -->
     <div class="modal fade" id="modalTambahRombel" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered mw-650px">

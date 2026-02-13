@@ -16,9 +16,10 @@ class RombelController extends Controller
     {
         $this->middleware('role:admin');
     }
+
     public function index()
     {
-        $rombels = Rombel::withCount('mahasiswa')->with(['tahunMasuk', 'prodi','dosen.user'])->get();
+        $rombels = Rombel::withCount('mahasiswa')->with(['tahunMasuk', 'prodi', 'dosen.user'])->get();
         $tahunAkademiks = TahunAkademik::all();
         $prodis = Prodi::all();
         $dosen = Dosen::with('user')->get();
@@ -50,10 +51,8 @@ class RombelController extends Controller
     {
         $rombel = Rombel::with(['tahunMasuk', 'prodi'])->withCount('mahasiswa')->findOrFail($id);
 
-        // Ambil ID tahun_masuk dari FK
         $rombelTahunMasukId = $rombel->getRawOriginal('tahun_masuk');
 
-        // Ambil mahasiswa dengan filter prodi & tahun_masuk
         $mahasiswa = Mahasiswa::with(['user', 'prodi'])
             ->where(function ($q) {
                 $q->whereNull('id_rombel')->orWhere('id_rombel', 0);
@@ -66,8 +65,6 @@ class RombelController extends Controller
 
         return view('data-master.tambahmhs-rombel', compact('rombel', 'mahasiswa', 'tahunAwal'));
     }
-
-
 
     public function storeMahasiswa(Request $request, $id)
     {
@@ -90,12 +87,10 @@ class RombelController extends Controller
 
     public function detail($id)
     {
-        // Ambil rombel beserta relasi prodi, tahunMasuk, dan dosen
         $rombel = Rombel::with(['prodi', 'tahunMasuk', 'dosen.user'])
             ->withCount('mahasiswa')
             ->findOrFail($id);
 
-        // Ambil semua mahasiswa yang ada di rombel ini
         $mahasiswa = Mahasiswa::with('user')
             ->where('id_rombel', $id)
             ->get();
@@ -103,23 +98,44 @@ class RombelController extends Controller
         return view('data-master.detail-rombel', compact('rombel', 'mahasiswa'));
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | BUG FIX #1 — method update()
+    |--------------------------------------------------------------------------
+    | MASALAH SEBELUMNYA:
+    |   1. Validasi mewajibkan field 'kapasitas' → required|integer|min:1
+    |      Padahal field 'kapasitas' TIDAK ADA di form edit rombel maupun
+    |      di $fillable model Rombel, sehingga validasi SELALU GAGAL dan
+    |      data tidak pernah tersimpan.
+    |
+    |   2. Field 'id_dosen' tidak ikut di-update, padahal form mengirimnya.
+    |
+    | PERBAIKAN:
+    |   1. Hapus 'kapasitas' dari validasi dan dari array update.
+    |   2. Tambahkan 'id_dosen' ke validasi dan array update.
+    |   3. Tambah validasi 'id_dosen' → required|exists:dosen,id
+    |--------------------------------------------------------------------------
+    */
     public function update(Request $request, $id)
     {
         $rombel = Rombel::findOrFail($id);
+
         $request->validate([
-            'kode_rombel' => 'required|max:6|unique:rombel,kode_rombel,'.$rombel->id,
+            'kode_rombel' => 'required|max:6|unique:rombel,kode_rombel,' . $rombel->id,
             'nama_rombel' => 'required|string',
-            'kapasitas' => 'required|integer|min:1',
+            // DIHAPUS: 'kapasitas' → field ini tidak ada di form & tidak di fillable
             'tahun_masuk' => 'required|exists:tahun_akademik,id',
-            'id_prodi' => 'required|exists:prodi,id',
+            'id_prodi'    => 'required|exists:prodi,id',
+            'id_dosen'    => 'required|exists:dosen,id', // DITAMBAH: ada di form tapi belum divalidasi
         ]);
 
         $rombel->update([
             'kode_rombel' => $request->kode_rombel,
             'nama_rombel' => $request->nama_rombel,
-            'kapasitas' => $request->kapasitas,
+            // DIHAPUS: 'kapasitas' → tidak ada di $fillable model Rombel
             'tahun_masuk' => $request->tahun_masuk,
-            'id_prodi' => $request->id_prodi,
+            'id_prodi'    => $request->id_prodi,
+            'id_dosen'    => $request->id_dosen, // DITAMBAH: supaya perubahan DPA tersimpan
         ]);
 
         return redirect()->route('rombel.index')->with('success', 'Data rombel berhasil diupdate.');

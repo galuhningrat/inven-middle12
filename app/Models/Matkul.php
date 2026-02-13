@@ -19,6 +19,12 @@ class Matkul extends Model
         'jenis',
         'id_prodi',
         'id_dosen',
+        'semester',
+    ];
+
+    protected $casts = [
+        'semester' => 'integer',
+        'bobot'    => 'integer',
     ];
 
     // Relasi ke prodi

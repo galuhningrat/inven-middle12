@@ -21,22 +21,35 @@ use Illuminate\Support\Facades\Auth;
 
 class MahasiswaController extends Controller
 {
+    /*
+    |--------------------------------------------------------------------------
+    | BUG FIX #2 — method index()
+    |--------------------------------------------------------------------------
+    | MASALAH SEBELUMNYA:
+    |   Method index() hanya mengirim $tahunAkademikAktif (satu record atau null)
+    |   ke view. Di view, field Tahun Akademik dirender sebagai readonly input
+    |   yang hanya bisa menampilkan satu nilai. Jika $tahunAkademikAktif = null,
+    |   field menampilkan error dan tidak bisa diklik sama sekali.
+    |
+    | PERBAIKAN:
+    |   Tambahkan $tahunAkademiks (semua record, diurutkan terbaru) ke compact().
+    |   View sudah diupdate menjadi <select> dropdown yang menggunakan variabel ini.
+    |--------------------------------------------------------------------------
+    */
+
     // ========== 1. INDEX (LIST DATA) ==========
     public function index(Request $request)
     {
         $query = Mahasiswa::with(['user', 'prodi', 'rombel']);
 
-        // Filter Prodi
         if ($request->filled('prodi')) {
             $query->where('id_prodi', $request->prodi);
         }
 
-        // Filter Status
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
-        // Search
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -58,7 +71,19 @@ class MahasiswaController extends Controller
 
         $prodis = Prodi::all();
         $tahunAkademikAktif = TahunAkademik::where('status_aktif', true)->first();
-        return view('mahasiswa.index', compact('mahasiswa', 'users', 'prodis', 'tahunAkademikAktif'));
+
+        // FIX: Tambahkan semua tahun akademik untuk dropdown di modal Tambah Mahasiswa
+        // Diurutkan tahun terbaru dulu agar pilihan paling relevan ada di atas
+        $tahunAkademiks = TahunAkademik::orderByDesc('tahun_awal')
+            ->orderByRaw("CASE WHEN semester = 'Ganjil' THEN 1 WHEN semester = 'Genap' THEN 2 ELSE 3 END")->get();
+
+        return view('mahasiswa.index', compact(
+            'mahasiswa',
+            'users',
+            'prodis',
+            'tahunAkademikAktif',
+            'tahunAkademiks'  // FIX: ditambahkan
+        ));
     }
 
     // ========== 2. STORE (CREATE) ==========
@@ -76,13 +101,11 @@ class MahasiswaController extends Controller
 
         DB::beginTransaction();
         try {
-            // Menggunakan raw ID untuk query Rombel
             $rombel = Rombel::where('id_prodi', $validated['id_prodi'])
                 ->where('tahun_masuk', $validated['tahun_masuk'])
                 ->first();
 
             if (!$rombel) {
-                // Auto-create Rombel jika belum ada
                 $prodi = Prodi::findOrFail($validated['id_prodi']);
                 $tahun = TahunAkademik::findOrFail($validated['tahun_masuk']);
 
@@ -91,13 +114,12 @@ class MahasiswaController extends Controller
                     'nama_rombel' => $prodi->nama_prodi . ' - Angkatan ' . $tahun->tahun_awal,
                     'tahun_masuk' => $validated['tahun_masuk'],
                     'id_prodi' => $validated['id_prodi'],
-                    'id_dosen' => $prodi->id_dosen, // Kaprodi sebagai DPA default
+                    'id_dosen' => $prodi->id_dosen,
                 ]);
 
                 Log::info("Auto-created Rombel: {$rombel->nama_rombel}");
             }
 
-            // Assign mahasiswa ke rombel
             $validated['id_rombel'] = $rombel->id;
 
             Mahasiswa::create($validated);
@@ -125,11 +147,8 @@ class MahasiswaController extends Controller
         $mahasiswa = Mahasiswa::findOrFail($id);
 
         $validated = $request->validate([
-            // Data User
             'nama' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $mahasiswa->id_users,
-
-            // Data Mahasiswa
             'nim' => 'required|unique:mahasiswa,nim,' . $id,
             'nik' => 'required|digits:16|unique:mahasiswa,nik,' . $id,
             'no_kk' => 'required|digits:16|unique:mahasiswa,no_kk,' . $id,
@@ -138,8 +157,6 @@ class MahasiswaController extends Controller
             'tanggal_lahir' => 'required|date|before:today',
             'jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
             'agama' => 'required|in:Islam,Katolik,Protestan,Budha,Hindu,Konghucu',
-
-            // Alamat
             'prov' => 'required|string|max:50',
             'kab' => 'required|string|max:50',
             'kec' => 'required|string|max:50',
@@ -148,8 +165,6 @@ class MahasiswaController extends Controller
             'rt' => 'required|string|max:3',
             'rw' => 'required|string|max:3',
             'kode_pos' => 'required|digits:5',
-
-            // Kontak
             'hp' => 'required|string|max:15',
             'marital_status' => 'required|in:Lajang,Menikah,Cerai Hidup,Cerai Mati',
             'kewarganegaraan' => 'required|in:WNI,WNA',
@@ -158,13 +173,11 @@ class MahasiswaController extends Controller
 
         DB::beginTransaction();
         try {
-            // Update User (nama & email)
             $mahasiswa->user->update([
                 'nama' => $validated['nama'],
                 'email' => $validated['email'],
             ]);
 
-            // Update Mahasiswa (tanpa nama & email)
             $mahasiswa->update(collect($validated)->except(['nama', 'email'])->toArray());
 
             DB::commit();
@@ -183,9 +196,7 @@ class MahasiswaController extends Controller
         try {
             $mahasiswa = Mahasiswa::where('nim', $nim)->firstOrFail();
 
-            // Pastikan nama kolom di bawah ini sama persis dengan fillable di model Mahasiswa
             $dataOrtu = [
-                // Data Ayah
                 'nama_ayah'          => null,
                 'tempat_lahir_ayah'  => null,
                 'tanggal_lahir_ayah' => null,
@@ -194,8 +205,6 @@ class MahasiswaController extends Controller
                 'penghasilan_ayah'   => null,
                 'hp_ayah'            => null,
                 'alamat_ayah'        => null,
-
-                // Data Ibu
                 'nama_ibu'           => null,
                 'tempat_lahir_ibu'   => null,
                 'tanggal_lahir_ibu'  => null,
@@ -204,8 +213,6 @@ class MahasiswaController extends Controller
                 'penghasilan_ibu'    => null,
                 'hp_ibu'             => null,
                 'alamat_ibu'         => null,
-
-                // Data Wali
                 'nama_wali'          => null,
                 'pekerjaan_wali'     => null,
                 'penghasilan_wali'   => null,
@@ -227,7 +234,6 @@ class MahasiswaController extends Controller
         try {
             $mahasiswa = Mahasiswa::findOrFail($id);
 
-            // Hapus file terkait (softfile)
             $softfiles = [
                 'softfile_surat_pernyataan',
                 'softfile_pas_foto',
@@ -268,9 +274,6 @@ class MahasiswaController extends Controller
 
     public function updateBiodata(Request $request, $nim)
     {
-        Log::info("Update biodata untuk NIM: " . $nim);
-        Log::info("Data request: ", $request->all());
-
         $mahasiswa = Mahasiswa::where('nim', $nim)->firstOrFail();
 
         $validated = $request->validate([
@@ -353,7 +356,6 @@ class MahasiswaController extends Controller
                 ->with('success', 'Riwayat pendidikan berhasil ditambahkan');
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error store pendidikan: ' . $e->getMessage());
             return back()->withInput()->with('error', 'Gagal menyimpan: ' . $e->getMessage());
         }
     }
@@ -370,31 +372,24 @@ class MahasiswaController extends Controller
         $mahasiswa = Mahasiswa::where('nim', $nim)->firstOrFail();
 
         $validated = $request->validate([
-            'jenjang'         => 'required|string|max:50',
-            'nama_sekolah'    => 'required|string|max:150',
-            'jurusan'         => 'nullable|string|max:100',
-            'alamat_sekolah'  => 'nullable|string',
-            'tahun_lulus'     => 'required|digits:4',
-            'no_ijazah'       => 'nullable|string|max:50',
-            'nisn'            => 'nullable|string|max:20',
-            'file_ijazah'     => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
+            'jenjang'        => 'required|string|max:50',
+            'nama_sekolah'   => 'required|string|max:150',
+            'jurusan'        => 'nullable|string|max:100',
+            'alamat_sekolah' => 'nullable|string',
+            'tahun_lulus'    => 'required|digits:4',
+            'no_ijazah'      => 'nullable|string|max:50',
+            'file_ijazah'    => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
         ]);
 
         DB::beginTransaction();
         try {
-            // 1. Cek jika ada file baru diupload
             if ($request->hasFile('file_ijazah')) {
-                $file = $request->file('file_ijazah');
-                $filename = 'ijazah_' . $mahasiswa->nim . '_' . time() . '.' . $file->getClientOriginalExtension();
-                $validated['file_ijazah'] = $file->storeAs('ijazah_mahasiswa', $filename, 'public');
-
                 $file = $request->file('file_ijazah');
                 $ext = $file->getClientOriginalExtension();
                 $filename = 'ijazah_' . $mahasiswa->nim . '_' . $validated['jenjang'] . '_' . time() . '.' . $ext;
                 $validated['file_ijazah'] = $file->storeAs('ijazah_mahasiswa', $filename, 'public');
             }
 
-            // 2. Update data
             $pendidikan->update($validated);
 
             DB::commit();
@@ -438,44 +433,33 @@ class MahasiswaController extends Controller
         $mahasiswa = Mahasiswa::where('nim', $nim)->firstOrFail();
 
         $validated = $request->validate([
-            // Data Ayah
-            'nama_ayah' => 'required|string|max:100',
-            'tempat_lahir_ayah' => 'nullable|string|max:50',
+            'nama_ayah'          => 'required|string|max:100',
+            'tempat_lahir_ayah'  => 'nullable|string|max:50',
             'tanggal_lahir_ayah' => 'nullable|date',
-            'pendidikan_ayah' => 'nullable|string|max:50',
-            'pekerjaan_ayah' => 'nullable|string|max:100',
-            'penghasilan_ayah' => 'nullable|string|max:100',
-            'hp_ayah' => 'nullable|string|max:14',
-            'alamat_ayah' => 'nullable|string',
-
-            // Data Ibu
-            'nama_ibu' => 'required|string|max:100',
-            'tempat_lahir_ibu' => 'nullable|string|max:50',
-            'tanggal_lahir_ibu' => 'nullable|date',
-            'pendidikan_ibu' => 'nullable|string|max:50',
-            'pekerjaan_ibu' => 'nullable|string|max:100',
-            'penghasilan_ibu' => 'nullable|string|max:100',
-            'hp_ibu' => 'nullable|string|max:14',
-            'alamat_ibu' => 'nullable|string',
+            'pendidikan_ayah'    => 'nullable|string|max:50',
+            'pekerjaan_ayah'     => 'nullable|string|max:100',
+            'penghasilan_ayah'   => 'nullable|string|max:100',
+            'hp_ayah'            => 'nullable|string|max:14',
+            'alamat_ayah'        => 'nullable|string',
+            'nama_ibu'           => 'required|string|max:100',
+            'tempat_lahir_ibu'   => 'nullable|string|max:50',
+            'tanggal_lahir_ibu'  => 'nullable|date',
+            'pendidikan_ibu'     => 'nullable|string|max:50',
+            'pekerjaan_ibu'      => 'nullable|string|max:100',
+            'penghasilan_ibu'    => 'nullable|string|max:100',
+            'hp_ibu'             => 'nullable|string|max:14',
+            'alamat_ibu'         => 'nullable|string',
         ]);
 
         DB::beginTransaction();
         try {
-            // Gunakan update() langsung tanpa create
             $mahasiswa->update($validated);
-
-            // DEBUG LOG (hapus setelah testing)
-            Log::info('Data Ortu Updated', [
-                'nim' => $nim,
-                'data' => $validated
-            ]);
 
             DB::commit();
             return redirect()->route('mahasiswa.dataortu', $nim)
                 ->with('success', 'Data orang tua berhasil diupdate');
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error update ortu: ' . $e->getMessage());
             return back()->withInput()->with('error', 'Gagal update: ' . $e->getMessage());
         }
     }
@@ -483,31 +467,21 @@ class MahasiswaController extends Controller
     // ========== TAB AKADEMIK ==========
     public function akademik($nim)
     {
-        // ✅ CRITICAL: ALWAYS eager-load krs.matkul untuk perhitungan SKS
         $mahasiswa = Mahasiswa::with([
             'prodi.fakultas',
             'rombel.dosen.user',
             'tahunAkademik',
-            'krs.matkul'  // MUST LOAD untuk kalkulasi
+            'krs.matkul'
         ])
             ->where('nim', $nim)
             ->firstOrFail();
 
-        // ✅ Calculate IPS per semester
-        $semesterIPS = $mahasiswa->getAllSemesterIPS();
-
-        // ✅ Calculate IPK
-        $ipk = $mahasiswa->hitungIPK();
-
-        // ✅ Determine beban SKS untuk semester berikutnya
+        $semesterIPS      = $mahasiswa->getAllSemesterIPS();
+        $ipk              = $mahasiswa->hitungIPK();
         $semesterTerakhir = $mahasiswa->semester_terakhir;
-        $bebanSKS = $mahasiswa->tentukanBebanSKS($semesterTerakhir);
-
-        // ✅ Total SKS yang sudah diambil
-        $totalSks = $mahasiswa->total_sks;
-
-        // ✅ Prediksi Kelulusan (Minimal 144 SKS & IPK >= 2.0)
-        $sksKurang = max(0, 144 - $totalSks);
+        $bebanSKS         = $mahasiswa->tentukanBebanSKS($semesterTerakhir);
+        $totalSks         = $mahasiswa->total_sks;
+        $sksKurang        = max(0, 144 - $totalSks);
         $predikatKelulusan = $this->getPredikatKelulusan($ipk);
 
         return view('mahasiswa.infoakad-mhs', compact(
@@ -522,13 +496,12 @@ class MahasiswaController extends Controller
         ));
     }
 
-    // ========== KELOLA AKADEMIK ==========
     public function updateAkademik(Request $request, $nim)
     {
         $mahasiswa = Mahasiswa::where('nim', $nim)->firstOrFail();
 
         $validated = $request->validate([
-            'krs.*.id' => 'required|exists:krs,id',
+            'krs.*.id'          => 'required|exists:krs,id',
             'krs.*.nilai_huruf' => 'required|in:A,B,C,D,E',
         ]);
 
@@ -558,30 +531,23 @@ class MahasiswaController extends Controller
             'B' => 3.0,
             'C' => 2.0,
             'D' => 1.0,
-            'E' => 0.0,
             default => 0.0,
         };
     }
 
-    /**
-     *  Helper Menentukan Predikat Kelulusan
-     */
     private function getPredikatKelulusan($ipk)
     {
-        if ($ipk >= 3.51) return ['label' => 'Cum Laude', 'class' => 'success'];
-        if ($ipk >= 3.01) return ['label' => 'Sangat Memuaskan', 'class' => 'primary'];
-        if ($ipk >= 2.76) return ['label' => 'Memuaskan', 'class' => 'info'];
-        if ($ipk >= 2.00) return ['label' => 'Cukup', 'class' => 'warning'];
-        return ['label' => 'Kurang', 'class' => 'danger'];
+        if ($ipk >= 3.51) return ['label' => 'Cum Laude',          'class' => 'success'];
+        if ($ipk >= 3.01) return ['label' => 'Sangat Memuaskan',   'class' => 'primary'];
+        if ($ipk >= 2.76) return ['label' => 'Memuaskan',          'class' => 'info'];
+        if ($ipk >= 2.00) return ['label' => 'Cukup',              'class' => 'warning'];
+        return                    ['label' => 'Kurang',             'class' => 'danger'];
     }
 
     // ========== TAB RIWAYAT KULIAH ==========
     public function riwayatKuliah($nim)
     {
-        $mahasiswa = Mahasiswa::with('riwayatKuliah')
-            ->where('nim', $nim)
-            ->firstOrFail();
-
+        $mahasiswa = Mahasiswa::with('riwayatKuliah')->where('nim', $nim)->firstOrFail();
         return view('mahasiswa.riwayat-kuliah', compact('mahasiswa'));
     }
 
@@ -590,12 +556,12 @@ class MahasiswaController extends Controller
         $mahasiswa = Mahasiswa::where('nim', $nim)->firstOrFail();
 
         $validated = $request->validate([
-            'kampus_asal' => 'required|string|max:150',
-            'prodi_asal' => 'required|string|max:100',
-            'tahun_masuk' => 'required|digits:4|integer',
-            'tahun_keluar' => 'required|digits:4|integer|gte:tahun_masuk',
-            'jenis' => 'required|in:Transfer,Pindahan,Lanjutan',
-            'alasan' => 'nullable|string',
+            'kampus_asal'    => 'required|string|max:150',
+            'prodi_asal'     => 'required|string|max:100',
+            'tahun_masuk'    => 'required|digits:4|integer',
+            'tahun_keluar'   => 'required|digits:4|integer|gte:tahun_masuk',
+            'jenis'          => 'required|in:Transfer,Pindahan,Lanjutan',
+            'alasan'         => 'nullable|string',
             'file_transkrip' => 'nullable|file|mimes:pdf|max:2048',
         ]);
 
@@ -603,8 +569,7 @@ class MahasiswaController extends Controller
         try {
             $data = $validated;
             $data['id_mahasiswa'] = $mahasiswa->id;
-
-            $data['kategori'] = 'Formal';
+            $data['kategori']     = 'Formal';
 
             if ($request->hasFile('file_transkrip')) {
                 $file = $request->file('file_transkrip');
@@ -619,7 +584,6 @@ class MahasiswaController extends Controller
                 ->with('success', 'Riwayat kuliah berhasil ditambahkan');
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error store riwayat kuliah: ' . $e->getMessage());
             return back()->withInput()->with('error', 'Gagal simpan: ' . $e->getMessage());
         }
     }
@@ -634,25 +598,19 @@ class MahasiswaController extends Controller
 
         $riwayat->delete();
 
-        return redirect()->route('mahasiswa.riwayat-kuliah', $nim)
-            ->with('success', 'Riwayat kuliah dihapus');
+        return redirect()->route('mahasiswa.riwayat-kuliah', $nim)->with('success', 'Riwayat kuliah dihapus');
     }
 
     // ========== TAB PEMBAYARAN ==========
     public function pembayaran($nim)
     {
-        $mahasiswa = Mahasiswa::with('pembayaran.tahunAkademik')
-            ->where('nim', $nim)
-            ->firstOrFail();
-
+        $mahasiswa    = Mahasiswa::with('pembayaran.tahunAkademik')->where('nim', $nim)->firstOrFail();
         $tahunAkademik = TahunAkademik::orderBy('tahun_awal', 'desc')->get();
-
         return view('mahasiswa.pembayaran', compact('mahasiswa', 'tahunAkademik'));
     }
 
     public function storePembayaran(Request $request, $nim)
     {
-
         if (!in_array(Auth::user()->id_role, [1, 3])) {
             return redirect()->back()->with('error', 'Anda tidak memiliki akses untuk menambah pembayaran.');
         }
@@ -660,25 +618,22 @@ class MahasiswaController extends Controller
         $mahasiswa = Mahasiswa::where('nim', $nim)->firstOrFail();
 
         $validated = $request->validate([
-            'id_tahun_akademik' => 'required|exists:tahun_akademik,id',
-            'jenis_pembayaran' => 'required|string|max:50',
-            'jumlah_tagihan' => 'required|numeric|min:0',
-            'jumlah_dibayar' => 'nullable|numeric|min:0',
+            'id_tahun_akademik'  => 'required|exists:tahun_akademik,id',
+            'jenis_pembayaran'   => 'required|string|max:50',
+            'jumlah_tagihan'     => 'required|numeric|min:0',
+            'jumlah_dibayar'     => 'nullable|numeric|min:0',
             'tanggal_jatuh_tempo' => 'required|date',
-            'tanggal_bayar' => 'nullable|date',
-            'bukti_bayar' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
-            'keterangan' => 'nullable|string',
+            'tanggal_bayar'      => 'nullable|date',
+            'bukti_bayar'        => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
+            'keterangan'         => 'nullable|string',
         ]);
 
         DB::beginTransaction();
         try {
-            $validated['id_mahasiswa'] = $mahasiswa->id;
+            $validated['id_mahasiswa']  = $mahasiswa->id;
             $validated['jumlah_dibayar'] = $validated['jumlah_dibayar'] ?? 0;
+            $validated['sisa_tagihan']   = $validated['jumlah_tagihan'] - $validated['jumlah_dibayar'];
 
-            // ✅ FIX: Auto-calculate sisa_tagihan
-            $validated['sisa_tagihan'] = $validated['jumlah_tagihan'] - $validated['jumlah_dibayar'];
-
-            // ✅ FIX: Auto-set status based on payment
             if ($validated['jumlah_dibayar'] >= $validated['jumlah_tagihan']) {
                 $validated['status'] = 'Lunas';
             } elseif ($validated['jumlah_dibayar'] > 0) {
@@ -696,26 +651,23 @@ class MahasiswaController extends Controller
             PembayaranMahasiswa::create($validated);
 
             DB::commit();
-            return redirect()->route('mahasiswa.pembayaran', $nim)
-                ->with('success', 'Data pembayaran berhasil ditambahkan');
+            return redirect()->route('mahasiswa.pembayaran', $nim)->with('success', 'Data pembayaran berhasil ditambahkan');
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error store pembayaran: ' . $e->getMessage());
             return back()->withInput()->with('error', 'Gagal: ' . $e->getMessage());
         }
     }
 
     public function updatePembayaran(Request $request, $nim, $id)
     {
-        $mahasiswa = Mahasiswa::where('nim', $nim)->firstOrFail();
-        $pembayaran = PembayaranMahasiswa::where('id_mahasiswa', $mahasiswa->id)
-            ->findOrFail($id);
+        $mahasiswa  = Mahasiswa::where('nim', $nim)->firstOrFail();
+        $pembayaran = PembayaranMahasiswa::where('id_mahasiswa', $mahasiswa->id)->findOrFail($id);
 
         $validated = $request->validate([
-            'jumlah_dibayar' => 'required|numeric|min:0',
-            'tanggal_bayar' => 'nullable|date',
-            'bukti_bayar' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
-            'keterangan' => 'nullable|string',
+            'jumlah_dibayar'     => 'required|numeric|min:0',
+            'tanggal_bayar'      => 'nullable|date',
+            'bukti_bayar'        => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
+            'keterangan'         => 'nullable|string',
         ]);
 
         DB::beginTransaction();
@@ -724,7 +676,6 @@ class MahasiswaController extends Controller
                 if ($pembayaran->bukti_bayar && Storage::disk('public')->exists($pembayaran->bukti_bayar)) {
                     Storage::disk('public')->delete($pembayaran->bukti_bayar);
                 }
-
                 $file = $request->file('bukti_bayar');
                 $filename = 'bukti_' . $mahasiswa->nim . '_' . time() . '.' . $file->getClientOriginalExtension();
                 $validated['bukti_bayar'] = $file->storeAs('bukti_bayar', $filename, 'public');
@@ -733,8 +684,7 @@ class MahasiswaController extends Controller
             $pembayaran->update($validated);
 
             DB::commit();
-            return redirect()->route('mahasiswa.pembayaran', $nim)
-                ->with('success', 'Data pembayaran berhasil diupdate');
+            return redirect()->route('mahasiswa.pembayaran', $nim)->with('success', 'Data pembayaran berhasil diupdate');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withInput()->with('error', 'Gagal update: ' . $e->getMessage());
@@ -751,8 +701,7 @@ class MahasiswaController extends Controller
 
         $pembayaran->delete();
 
-        return redirect()->route('mahasiswa.pembayaran', $nim)
-            ->with('success', 'Data pembayaran dihapus');
+        return redirect()->route('mahasiswa.pembayaran', $nim)->with('success', 'Data pembayaran dihapus');
     }
 
     // ========== TAB DOKUMEN ==========
@@ -767,30 +716,29 @@ class MahasiswaController extends Controller
         $mahasiswa = Mahasiswa::where('nim', $nim)->firstOrFail();
 
         $validated = $request->validate([
-            'nama_dokumen' => 'required|string|max:150',
+            'nama_dokumen'  => 'required|string|max:150',
             'jenis_dokumen' => 'required|in:Ijazah,Transkrip,KTP,KK,Akta Lahir,Foto,Sertifikat,Surat Keterangan,Lainnya',
-            'file' => 'required|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
-            'keterangan' => 'nullable|string',
+            'file'          => 'required|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
+            'keterangan'    => 'nullable|string',
         ]);
 
         DB::beginTransaction();
         try {
-            $file = $request->file('file');
+            $file     = $request->file('file');
             $filename = 'dok_' . $mahasiswa->nim . '_' . time() . '.' . $file->getClientOriginalExtension();
-            $path = $file->storeAs('dokumen_mahasiswa', $filename, 'public');
+            $path     = $file->storeAs('dokumen_mahasiswa', $filename, 'public');
 
             $mahasiswa->dokumen()->create([
-                'nama_dokumen' => $validated['nama_dokumen'],
+                'nama_dokumen'  => $validated['nama_dokumen'],
                 'jenis_dokumen' => $validated['jenis_dokumen'],
-                'file_path' => $path,
-                'ukuran_file' => $file->getSize(),
-                'ekstensi' => $file->getClientOriginalExtension(),
-                'keterangan' => $validated['keterangan'] ?? null,
+                'file_path'     => $path,
+                'ukuran_file'   => $file->getSize(),
+                'ekstensi'      => $file->getClientOriginalExtension(),
+                'keterangan'    => $validated['keterangan'] ?? null,
             ]);
 
             DB::commit();
-            return redirect()->route('mahasiswa.dokumen', $nim)
-                ->with('success', 'Dokumen berhasil diupload');
+            return redirect()->route('mahasiswa.dokumen', $nim)->with('success', 'Dokumen berhasil diupload');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Gagal upload: ' . $e->getMessage());
@@ -807,8 +755,7 @@ class MahasiswaController extends Controller
 
         $dokumen->delete();
 
-        return redirect()->route('mahasiswa.dokumen', $nim)
-            ->with('success', 'Dokumen berhasil dihapus');
+        return redirect()->route('mahasiswa.dokumen', $nim)->with('success', 'Dokumen berhasil dihapus');
     }
 
     // ========== TAB KELENGKAPAN DOKUMEN ==========
@@ -818,15 +765,15 @@ class MahasiswaController extends Controller
 
         $jenisDokumen = [
             'surat_pernyataan' => 'Surat Pernyataan',
-            'pas_foto' => 'Pas Foto 3x4',
-            'ktp_mhs' => 'KTP Mahasiswa',
-            'kk' => 'Kartu Keluarga',
-            'akte' => 'Akte Kelahiran',
-            'ktp_ayah' => 'KTP Ayah',
-            'ktp_ibu' => 'KTP Ibu',
-            'skl' => 'Surat Keterangan Lulus',
-            'transkrip' => 'Transkrip Nilai',
-            'ijazah' => 'Ijazah',
+            'pas_foto'         => 'Pas Foto 3x4',
+            'ktp_mhs'          => 'KTP Mahasiswa',
+            'kk'               => 'Kartu Keluarga',
+            'akte'             => 'Akte Kelahiran',
+            'ktp_ayah'         => 'KTP Ayah',
+            'ktp_ibu'          => 'KTP Ibu',
+            'skl'              => 'Surat Keterangan Lulus',
+            'transkrip'        => 'Transkrip Nilai',
+            'ijazah'           => 'Ijazah',
         ];
 
         return view('mahasiswa.kelengkapan-dokumen', compact('mahasiswa', 'jenisDokumen'));
@@ -837,27 +784,24 @@ class MahasiswaController extends Controller
         $mahasiswa = Mahasiswa::where('nim', $nim)->firstOrFail();
 
         $validated = $request->validate([
-            'jenis_dokumen' => 'required|string',
-            'file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:2048',
+            'jenis_dokumen'  => 'required|string',
+            'file'           => 'required|file|mimes:pdf,jpg,jpeg,png|max:2048',
             'hardfile_status' => 'nullable|boolean',
         ]);
 
         DB::beginTransaction();
         try {
-            $file = $request->file('file');
-            $jenis = $validated['jenis_dokumen'];
-            $filename = $jenis . '_' . $mahasiswa->nim . '_' . time() . '.' . $file->getClientOriginalExtension();
-            $path = $file->storeAs('dokumen_mahasiswa', $filename, 'public');
-
+            $file         = $request->file('file');
+            $jenis        = $validated['jenis_dokumen'];
+            $filename     = $jenis . '_' . $mahasiswa->nim . '_' . time() . '.' . $file->getClientOriginalExtension();
+            $path         = $file->storeAs('dokumen_mahasiswa', $filename, 'public');
             $softfileField = "softfile_$jenis";
             $hardfileField = "hardfile_$jenis";
 
-            // ✅ FIX 1: Hapus file lama jika ada
             if ($mahasiswa->$softfileField && Storage::disk('public')->exists($mahasiswa->$softfileField)) {
                 Storage::disk('public')->delete($mahasiswa->$softfileField);
             }
 
-            // ✅ FIX 2: Update softfile (path) & hardfile (boolean)
             $updateData = [$softfileField => $path];
 
             if ($request->filled('hardfile_status') && $request->hardfile_status) {
@@ -867,16 +811,10 @@ class MahasiswaController extends Controller
             $mahasiswa->update($updateData);
 
             DB::commit();
-
-            // ✅ FIX 3: Return progress terbaru
-            return redirect()->route('mahasiswa.kelengkapan-dokumen', $nim)->with([
-                'success' => 'Dokumen berhasil diupload. Status softfile otomatis "Sudah".',
-                'kelengkapan_softfile' => $mahasiswa->fresh()->kelengkapan_softfile,
-                'kelengkapan_hardfile' => $mahasiswa->fresh()->kelengkapan_hardfile,
-            ]);
+            return redirect()->route('mahasiswa.kelengkapan-dokumen', $nim)
+                ->with('success', 'Dokumen berhasil diupload.');
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error upload dokumen: ' . $e->getMessage());
             return back()->with('error', 'Gagal upload: ' . $e->getMessage());
         }
     }
@@ -888,55 +826,39 @@ class MahasiswaController extends Controller
 
             $validated = $request->validate([
                 'jenis_dokumen' => 'required|string',
-                'status' => 'required|boolean',
+                'status'        => 'required|boolean',
             ]);
 
             $fieldName = "hardfile_" . $validated['jenis_dokumen'];
 
-            // ✅ FIX 4: Update dengan DB::table untuk menghindari race condition
             DB::table('mahasiswa')
                 ->where('nim', $nim)
-                ->update([
-                    $fieldName => $validated['status'],
-                    'updated_at' => now()
-                ]);
+                ->update([$fieldName => $validated['status'], 'updated_at' => now()]);
 
-            // ✅ FIX 5: Recalculate progress after update
-            $mahasiswa = $mahasiswa->fresh();
-            $kelengkapanHardfile = $mahasiswa->kelengkapan_hardfile;
+            $kelengkapanHardfile = $mahasiswa->fresh()->kelengkapan_hardfile;
 
             return response()->json([
-                'success' => true,
-                'message' => 'Status hardfile berhasil diupdate',
+                'success'              => true,
+                'message'              => 'Status hardfile berhasil diupdate',
                 'kelengkapan_hardfile' => $kelengkapanHardfile,
             ]);
         } catch (\Exception $e) {
-            Log::error('Error toggle hardfile: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal update status: ' . $e->getMessage()
-            ], 500);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
     public function deleteKelengkapanDokumen($nim, $jenis)
     {
         try {
-            $mahasiswa = Mahasiswa::where('nim', $nim)->firstOrFail();
-
+            $mahasiswa     = Mahasiswa::where('nim', $nim)->firstOrFail();
             $softfileField = "softfile_$jenis";
             $hardfileField = "hardfile_$jenis";
 
-            // ✅ Hapus file fisik
             if ($mahasiswa->$softfileField && Storage::disk('public')->exists($mahasiswa->$softfileField)) {
                 Storage::disk('public')->delete($mahasiswa->$softfileField);
             }
 
-            // ✅ Reset status softfile & hardfile
-            $mahasiswa->update([
-                $softfileField => null,
-                $hardfileField => false,
-            ]);
+            $mahasiswa->update([$softfileField => null, $hardfileField => false]);
 
             return back()->with('success', 'Dokumen berhasil dihapus.');
         } catch (\Exception $e) {
