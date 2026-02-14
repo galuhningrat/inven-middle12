@@ -53,7 +53,7 @@
                                 data-placeholder="Pilih Semester"
                                 required>
                                 <option></option>
-                                @for($s = 1; $s <= 8; $s++)
+                                @for($s = 1; $s <= 14; $s++)
                                 <option value="{{ $s }}" {{ old('semester') == $s ? 'selected' : '' }}>
                                     Semester {{ $s }}
                                 </option>
@@ -74,7 +74,7 @@
                         {{-- Jenis MK --}}
                         <div class="col-md-4">
                             <label class="form-label required fw-semibold fs-7">Jenis</label>
-                            <select name="jenis"
+                            <select name="jenis" id="jenis_mk"
                                 class="form-select form-select-solid"
                                 data-control="select2"
                                 data-hide-search="true"
@@ -87,21 +87,29 @@
                             </select>
                         </div>
 
-                        {{-- Program Studi --}}
+                        {{-- Program Studi (MULTIPLE SELECT) --}}
                         <div class="col-md-8">
-                            <label class="form-label required fw-semibold fs-7">Program Studi</label>
-                            <select name="id_prodi"
+                            <label class="form-label fw-semibold fs-7">
+                                <span id="label_prodi_required" class="required">Program Studi</span>
+                                <i class="bi bi-info-circle text-muted ms-1"
+                                   data-bs-toggle="tooltip"
+                                   title="MK Umum: Kosongkan (berlaku semua prodi). MK Wajib/Pilihan: Pilih minimal 1 prodi."></i>
+                            </label>
+                            <select name="id_prodi[]" id="select_prodi"
                                 class="form-select form-select-solid"
                                 data-control="select2"
                                 data-placeholder="Pilih Program Studi"
-                                required>
-                                <option></option>
+                                multiple>
                                 @foreach($prodi as $p)
-                                <option value="{{ $p->id }}" {{ old('id_prodi') == $p->id ? 'selected' : '' }}>
+                                <option value="{{ $p->id }}"
+                                    {{ is_array(old('id_prodi')) && in_array($p->id, old('id_prodi')) ? 'selected' : '' }}>
                                     {{ $p->nama_prodi }} ({{ $p->kode_prodi }})
                                 </option>
                                 @endforeach
                             </select>
+                            <div class="form-text text-muted fs-8">
+                                <span id="hint_prodi">Pilih satu atau lebih program studi</span>
+                            </div>
                         </div>
 
                         {{-- Dosen Pengampu --}}
@@ -137,3 +145,45 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const jenisSelect = document.getElementById('jenis_mk');
+    const prodiSelect = document.getElementById('select_prodi');
+    const labelRequired = document.getElementById('label_prodi_required');
+    const hintText = document.getElementById('hint_prodi');
+
+    // Fungsi untuk update UI berdasarkan jenis MK
+    function updateProdiField() {
+        const jenis = jenisSelect.value;
+
+        if (jenis === 'umum') {
+            // MK Umum: Prodi tidak wajib
+            labelRequired.classList.remove('required');
+            prodiSelect.removeAttribute('required');
+            hintText.innerHTML = '<i class="bi bi-info-circle me-1"></i>Kosongkan jika berlaku untuk <strong>semua prodi</strong>';
+            hintText.classList.add('text-primary');
+
+            // Clear selection (optional)
+            $(prodiSelect).val(null).trigger('change');
+        } else {
+            // MK Wajib/Pilihan: Prodi wajib
+            labelRequired.classList.add('required');
+            prodiSelect.setAttribute('required', 'required');
+            hintText.innerHTML = 'Pilih <strong>minimal 1 prodi</strong> untuk MK ' + (jenis === 'wajib' ? 'Wajib' : 'Pilihan');
+            hintText.classList.remove('text-primary');
+        }
+    }
+
+    // Event listener untuk perubahan jenis MK
+    jenisSelect.addEventListener('change', updateProdiField);
+
+    // Jalankan saat halaman pertama kali dimuat
+    updateProdiField();
+
+    // Initialize tooltip
+    $('[data-bs-toggle="tooltip"]').tooltip();
+});
+</script>
+@endpush

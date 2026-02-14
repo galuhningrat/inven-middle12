@@ -94,6 +94,7 @@ class MatkulController extends Controller
     // ============================================================
     public function store(Request $request)
     {
+        // ✅ VALIDASI YANG DIPERBAIKI
         $validated = $request->validate([
             'kode_mk'   => 'required|max:15|unique:matkul,kode_mk',
             'nama_mk'   => 'required|string|max:100',
@@ -101,24 +102,20 @@ class MatkulController extends Controller
             'jenis'     => 'required|in:wajib,pilihan,umum',
             'id_dosen'  => 'required|exists:dosen,id',
             'semester'  => 'required|integer|min:1|max:14',
-            // Jika umum: id_prodi[] bisa kosong (berlaku semua prodi)
-            // Jika wajib/pilihan: wajib pilih minimal 1 prodi
             'id_prodi'  => 'nullable|array',
             'id_prodi.*'=> 'exists:prodi,id',
-        ], [
-            'id_prodi.required_unless' => 'Pilih minimal 1 Program Studi untuk MK Wajib/Pilihan.',
         ]);
 
-        // MK Wajib/Pilihan wajib punya prodi
+        // ✅ VALIDASI KHUSUS: MK Wajib/Pilihan wajib punya prodi
         if ($validated['jenis'] !== 'umum' && empty($validated['id_prodi'])) {
             return redirect()->back()
                 ->withInput()
-                ->withErrors(['id_prodi' => 'Pilih minimal 1 Program Studi untuk MK Wajib/Pilihan.']);
+                ->withErrors(['id_prodi' => 'Mata Kuliah Wajib/Pilihan harus memilih minimal 1 Program Studi.']);
         }
 
         DB::beginTransaction();
         try {
-            // Simpan matkul (tanpa id_prodi)
+            // Simpan matkul (tanpa id_prodi karena pakai pivot)
             $matkul = Matkul::create([
                 'kode_mk'  => strtoupper($validated['kode_mk']),
                 'nama_mk'  => $validated['nama_mk'],
@@ -128,7 +125,7 @@ class MatkulController extends Controller
                 'semester' => $validated['semester'],
             ]);
 
-            // Simpan ke pivot
+            // ✅ SIMPAN KE PIVOT
             // MK Umum: tidak perlu sync (kosong = berlaku semua prodi via scope)
             // MK Wajib/Pilihan: sync ke prodi yang dipilih
             if ($validated['jenis'] !== 'umum' && !empty($validated['id_prodi'])) {
@@ -181,10 +178,11 @@ class MatkulController extends Controller
             'kode_mk.unique' => 'Kode Mata Kuliah sudah digunakan oleh mata kuliah lain!',
         ]);
 
+        // ✅ VALIDASI KHUSUS
         if ($validated['jenis'] !== 'umum' && empty($validated['id_prodi'])) {
             return redirect()->back()
                 ->withInput()
-                ->withErrors(['id_prodi' => 'Pilih minimal 1 Program Studi untuk MK Wajib/Pilihan.']);
+                ->withErrors(['id_prodi' => 'Mata Kuliah Wajib/Pilihan harus memilih minimal 1 Program Studi.']);
         }
 
         DB::beginTransaction();
@@ -198,7 +196,7 @@ class MatkulController extends Controller
                 'semester' => $validated['semester'],
             ]);
 
-            // Sync pivot:
+            // ✅ SYNC PIVOT
             // MK Umum → kosongkan pivot (tidak perlu prodi spesifik)
             // MK Wajib/Pilihan → sync prodi yang dipilih
             if ($validated['jenis'] === 'umum') {
