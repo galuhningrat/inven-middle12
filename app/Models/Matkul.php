@@ -17,9 +17,9 @@ class Matkul extends Model
         'nama_mk',
         'bobot',
         'jenis',
-        'id_prodi',
         'id_dosen',
         'semester',
+        // id_prodi DIHAPUS — sekarang pakai pivot matkul_prodi
     ];
 
     protected $casts = [
@@ -27,27 +27,46 @@ class Matkul extends Model
         'bobot'    => 'integer',
     ];
 
-    // Relasi ke prodi
-    public function prodi()
+    // ============================================================
+    // RELASI: Many-to-Many ke Prodi (via pivot matkul_prodi)
+    // ============================================================
+    public function prodis()
     {
-        return $this->belongsTo(Prodi::class, 'id_prodi', 'id');
+        return $this->belongsToMany(
+            Prodi::class,
+            'matkul_prodi',  // pivot table
+            'id_matkul',     // FK di pivot → matkul
+            'id_prodi'       // FK di pivot → prodi
+        )->withTimestamps();
     }
 
-    // Relasi ke dosen
+    // ============================================================
+    // RELASI: Dosen pengampu
+    // ============================================================
     public function dosen()
     {
         return $this->belongsTo(Dosen::class, 'id_dosen', 'id');
     }
 
-    // Helper untuk update (optional)
-    public function updateData($data)
+    // ============================================================
+    // HELPER: Cek apakah MK ini termasuk MK Umum
+    // ============================================================
+    public function isUmum(): bool
     {
-        return $this->update($data);
+        return $this->jenis === 'umum';
     }
 
-    // Helper untuk delete (optional)
-    public function deleteData()
+    // ============================================================
+    // SCOPE: MK yang tampil di prodi tertentu
+    // (MK spesifik prodi tersebut + semua MK Umum)
+    // ============================================================
+    public function scopeForProdi($query, int $prodiId)
     {
-        return $this->delete();
+        return $query->where(function ($q) use ($prodiId) {
+            // MK spesifik prodi ini
+            $q->whereHas('prodis', fn($p) => $p->where('prodi.id', $prodiId))
+              // ATAU MK Umum (berlaku di semua prodi)
+              ->orWhere('jenis', 'umum');
+        });
     }
 }

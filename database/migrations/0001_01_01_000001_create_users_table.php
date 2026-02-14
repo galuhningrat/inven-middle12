@@ -13,7 +13,7 @@ return new class extends Migration
             $table->id();
             $table->string('email', 50)->unique();
             $table->string('password', 255);
-            $table->string('nama', 32);
+            $table->string('nama', 100);
             $table->unsignedBigInteger('id_role');
             $table->foreign('id_role')->references('id')->on('roles')->onUpdate('cascade')->onDelete('restrict');
             $table->timestamp('last_login')->nullable();

@@ -15,9 +15,9 @@ return new class extends Migration
             $table->id();
             $table->string('kode_mk', 15)->unique();
             $table->string('nama_mk', 100);
-            $table->string('bobot', length: 1); 
+            $table->string('bobot', length: 1);
             $table->enum('jenis', ['wajib', 'pilihan', 'umum']);
-            $table->unsignedBigInteger('id_prodi');
+            $table->unsignedBigInteger('id_prodi')->nullable();
             $table->unsignedBigInteger('id_dosen');
             $table->timestamps();
 

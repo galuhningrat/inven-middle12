@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Prodi extends Model
 {
     use HasFactory;
+
     protected $table = 'prodi';
 
     protected $fillable = [
@@ -31,5 +32,26 @@ class Prodi extends Model
     public function mahasiswa()
     {
         return $this->hasMany(Mahasiswa::class, 'id_prodi');
+    }
+
+    // ============================================================
+    // RELASI: Many-to-Many ke Matkul (via pivot matkul_prodi)
+    // ============================================================
+    public function matkulSpesifik()
+    {
+        return $this->belongsToMany(
+            Matkul::class,
+            'matkul_prodi',
+            'id_prodi',
+            'id_matkul'
+        )->withTimestamps();
+    }
+
+    // ============================================================
+    // HELPER: Ambil semua MK untuk prodi ini (spesifik + umum)
+    // ============================================================
+    public function getAllMatkul()
+    {
+        return Matkul::forProdi($this->id)->get();
     }
 }

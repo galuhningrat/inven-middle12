@@ -9,29 +9,26 @@ use App\Models\Prodi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class MatkulController extends Controller
 {
     public function __construct()
     {
-        // Admin Akademik: READ ONLY
         $this->middleware('permission:kurikulum,read')->only(['index', 'show']);
-
-        // Kaprodi: FULL ACCESS
         $this->middleware('permission:kurikulum,create')->only(['store']);
         $this->middleware('permission:kurikulum,update')->only(['update']);
         $this->middleware('permission:kurikulum,delete')->only(['destroy']);
     }
 
-    /**
-     * Tampilkan mata kuliah dikelompokkan per Prodi → per Semester.
-     */
+    // ============================================================
+    // INDEX
+    // ============================================================
     public function index(Request $request)
     {
-        // Base query dengan eager loading
-        $query = Matkul::with(['prodi', 'dosen.user']);
+        $query = Matkul::with(['prodis', 'dosen.user']);
 
-        // ✅ FITUR SEARCH
+        // Search
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -40,45 +37,46 @@ class MatkulController extends Controller
             });
         }
 
-        // Filter by Prodi (jika ada)
+        // Filter by Prodi → ambil MK spesifik prodi + semua MK Umum
         if ($request->filled('filter_prodi')) {
-            $query->where('id_prodi', $request->filter_prodi);
+            $query->forProdi((int) $request->filter_prodi);
         }
 
-        // Filter by Semester (jika ada)
+        // Filter by Semester
         if ($request->filled('filter_semester')) {
             $query->where('semester', $request->filter_semester);
         }
 
-        $matakuliah = $query->orderBy('id_prodi')
-                            ->orderBy('semester')
-                            ->orderBy('kode_mk')
-                            ->get();
+        $matakuliah = $query->orderBy('semester')->orderBy('kode_mk')->get();
+        $prodi      = Prodi::orderBy('kode_prodi')->get();
+        $dosen      = Dosen::with('user')->get();
 
-        $prodi = Prodi::orderBy('kode_prodi')->get();
-        $dosen = Dosen::with('user')->get();
-
+        // ============================================================
         // Kelompokkan: prodi_id → semester → collection matkul
+        // MK Umum (jenis='umum') masuk ke SEMUA prodi
+        // ============================================================
+        $mkUmum = $matakuliah->where('jenis', 'umum');
+
         $matkulByProdiSemester = [];
+        $statsByProdi          = [];
 
         foreach ($prodi as $p) {
-            $matkulProdi = $matakuliah->where('id_prodi', $p->id);
+            // MK spesifik prodi ini
+            $mkSpesifik = $matakuliah->filter(function ($mk) use ($p) {
+                return $mk->jenis !== 'umum'
+                    && $mk->prodis->contains('id', $p->id);
+            });
 
-            if ($matkulProdi->isEmpty()) {
-                $matkulByProdiSemester[$p->id] = [];
-                continue;
-            }
+            // Gabung dengan MK Umum
+            $mkGabungan = $mkSpesifik->merge($mkUmum)
+                ->sortBy('semester')
+                ->sortBy('kode_mk');
 
-            $grouped = $matkulProdi->groupBy('semester')->sortKeys();
-            $matkulByProdiSemester[$p->id] = $grouped;
-        }
+            $matkulByProdiSemester[$p->id] = $mkGabungan->groupBy('semester')->sortKeys();
 
-        // Statistik per prodi
-        $statsByProdi = [];
-        foreach ($prodi as $p) {
             $statsByProdi[$p->id] = [
-                'total'     => $matakuliah->where('id_prodi', $p->id)->count(),
-                'total_sks' => $matakuliah->where('id_prodi', $p->id)->sum('bobot'),
+                'total'     => $mkGabungan->count(),
+                'total_sks' => $mkGabungan->sum('bobot'),
             ];
         }
 
@@ -91,82 +89,103 @@ class MatkulController extends Controller
         ));
     }
 
+    // ============================================================
+    // STORE
+    // ============================================================
     public function store(Request $request)
-{
-    // ===== DEBUG: Log semua input =====
-    \Log::info('🔥 MATKUL STORE DIPANGGIL');
-    \Log::info('Input:', $request->all());
-
-    // ===== CEK VALIDASI =====
-    try {
+    {
         $validated = $request->validate([
-            'kode_mk'   => 'required|max:15',
+            'kode_mk'   => 'required|max:15|unique:matkul,kode_mk',
             'nama_mk'   => 'required|string|max:100',
             'bobot'     => 'required|integer|min:1|max:9',
             'jenis'     => 'required|in:wajib,pilihan,umum',
-            'id_prodi'  => 'required|exists:prodi,id',
             'id_dosen'  => 'required|exists:dosen,id',
-            'semester'  => 'required|integer|min:1',
+            'semester'  => 'required|integer|min:1|max:14',
+            // Jika umum: id_prodi[] bisa kosong (berlaku semua prodi)
+            // Jika wajib/pilihan: wajib pilih minimal 1 prodi
+            'id_prodi'  => 'nullable|array',
+            'id_prodi.*'=> 'exists:prodi,id',
+        ], [
+            'id_prodi.required_unless' => 'Pilih minimal 1 Program Studi untuk MK Wajib/Pilihan.',
         ]);
 
-        \Log::info('✅ Validasi OK:', $validated);
+        // MK Wajib/Pilihan wajib punya prodi
+        if ($validated['jenis'] !== 'umum' && empty($validated['id_prodi'])) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['id_prodi' => 'Pilih minimal 1 Program Studi untuk MK Wajib/Pilihan.']);
+        }
 
-    } catch (\Exception $e) {
-        \Log::error('❌ Validasi GAGAL:', [
-            'error' => $e->getMessage()
-        ]);
+        DB::beginTransaction();
+        try {
+            // Simpan matkul (tanpa id_prodi)
+            $matkul = Matkul::create([
+                'kode_mk'  => strtoupper($validated['kode_mk']),
+                'nama_mk'  => $validated['nama_mk'],
+                'bobot'    => $validated['bobot'],
+                'jenis'    => $validated['jenis'],
+                'id_dosen' => $validated['id_dosen'],
+                'semester' => $validated['semester'],
+            ]);
 
-        return redirect()->back()
-            ->withInput()
-            ->with('error', 'Validasi gagal: ' . $e->getMessage());
+            // Simpan ke pivot
+            // MK Umum: tidak perlu sync (kosong = berlaku semua prodi via scope)
+            // MK Wajib/Pilihan: sync ke prodi yang dipilih
+            if ($validated['jenis'] !== 'umum' && !empty($validated['id_prodi'])) {
+                $matkul->prodis()->sync($validated['id_prodi']);
+            }
+
+            DB::commit();
+
+            Log::info('Matkul created', ['id' => $matkul->id, 'user_id' => Auth::id()]);
+
+            return redirect()->route('matakuliah.index')
+                ->with('success', "Mata kuliah '{$matkul->nama_mk}' berhasil disimpan!");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error creating matkul', ['error' => $e->getMessage()]);
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Gagal menyimpan mata kuliah: ' . $e->getMessage());
+        }
     }
 
-    // ===== COBA INSERT =====
-    try {
-        \Log::info('🔄 Mencoba insert...');
-
-        $matkul = Matkul::create($validated);
-
-        \Log::info('✅ INSERT BERHASIL! ID: ' . $matkul->id);
-
-        return redirect()->route('matakuliah.index')
-            ->with('success', 'Data berhasil disimpan!');
-
-    } catch (\Exception $e) {
-        \Log::error('❌ INSERT GAGAL:', [
-            'error' => $e->getMessage(),
-            'file' => $e->getFile(),
-            'line' => $e->getLine()
-        ]);
-
-        return redirect()->back()
-            ->withInput()
-            ->with('error', 'Insert gagal: ' . $e->getMessage());
-    }
-}
-
+    // ============================================================
+    // SHOW
+    // ============================================================
     public function show($id)
     {
-        $matakuliah = Matkul::with(['prodi', 'dosen.user'])->findOrFail($id);
+        $matakuliah = Matkul::with(['prodis', 'dosen.user'])->findOrFail($id);
         return view('matakuliah.detail-matkul', compact('matakuliah'));
     }
 
+    // ============================================================
+    // UPDATE
+    // ============================================================
     public function update(Request $request, $id)
     {
         $matakuliah = Matkul::findOrFail($id);
 
-        // ✅ VALIDASI UPDATE (ignore current ID untuk unique)
         $validated = $request->validate([
             'kode_mk'   => 'required|max:15|unique:matkul,kode_mk,' . $matakuliah->id,
             'nama_mk'   => 'required|string|max:100',
             'bobot'     => 'required|integer|min:1|max:9',
             'jenis'     => 'required|in:wajib,pilihan,umum',
-            'id_prodi'  => 'required|exists:prodi,id',
             'id_dosen'  => 'required|exists:dosen,id',
             'semester'  => 'required|integer|min:1|max:14',
+            'id_prodi'  => 'nullable|array',
+            'id_prodi.*'=> 'exists:prodi,id',
         ], [
             'kode_mk.unique' => 'Kode Mata Kuliah sudah digunakan oleh mata kuliah lain!',
         ]);
+
+        if ($validated['jenis'] !== 'umum' && empty($validated['id_prodi'])) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['id_prodi' => 'Pilih minimal 1 Program Studi untuk MK Wajib/Pilihan.']);
+        }
 
         DB::beginTransaction();
         try {
@@ -175,86 +194,72 @@ class MatkulController extends Controller
                 'nama_mk'  => $validated['nama_mk'],
                 'bobot'    => $validated['bobot'],
                 'jenis'    => $validated['jenis'],
-                'id_prodi' => $validated['id_prodi'],
                 'id_dosen' => $validated['id_dosen'],
                 'semester' => $validated['semester'],
             ]);
 
+            // Sync pivot:
+            // MK Umum → kosongkan pivot (tidak perlu prodi spesifik)
+            // MK Wajib/Pilihan → sync prodi yang dipilih
+            if ($validated['jenis'] === 'umum') {
+                $matakuliah->prodis()->detach();
+            } else {
+                $matakuliah->prodis()->sync($validated['id_prodi'] ?? []);
+            }
+
             DB::commit();
 
-            Log::info('Matakuliah updated', [
-                'id' => $matakuliah->id,
-                'kode_mk' => $validated['kode_mk'],
-                'user_id' => auth()->id()
-            ]);
+            Log::info('Matkul updated', ['id' => $matakuliah->id, 'user_id' => Auth::id()]);
 
             return redirect()->route('matakuliah.index')
-                ->with([
-                    'alert_type' => 'success',
-                    'message' => "Mata kuliah '{$validated['nama_mk']}' berhasil diupdate!"
-                ]);
+                ->with('success', "Mata kuliah '{$matakuliah->nama_mk}' berhasil diupdate!");
 
         } catch (\Exception $e) {
             DB::rollBack();
-
-            Log::error('Error updating matakuliah', [
-                'id' => $matakuliah->id,
-                'error' => $e->getMessage()
-            ]);
+            Log::error('Error updating matkul', ['id' => $id, 'error' => $e->getMessage()]);
 
             return redirect()->back()
                 ->withInput()
-                ->with([
-                    'alert_type' => 'danger',
-                    'message' => 'Gagal mengupdate mata kuliah: ' . $e->getMessage()
-                ]);
+                ->with('error', 'Gagal mengupdate mata kuliah: ' . $e->getMessage());
         }
     }
 
+    // ============================================================
+    // DESTROY
+    // ============================================================
     public function destroy($id)
     {
         $matakuliah = Matkul::findOrFail($id);
 
         DB::beginTransaction();
         try {
-            // ✅ CEK DEPENDENSI (jika ada jadwal menggunakan matkul ini)
             $hasJadwal = \App\Models\Jadwal::where('id_matkul', $id)->exists();
             if ($hasJadwal) {
-                return redirect()->back()->with([
-                    'alert_type' => 'warning',
-                    'message' => 'Tidak dapat menghapus mata kuliah yang sudah digunakan di jadwal!'
-                ]);
+                return redirect()->back()->with(
+                    'error',
+                    'Tidak dapat menghapus mata kuliah yang sudah digunakan di jadwal!'
+                );
             }
 
-            $nama_mk = $matakuliah->nama_mk;
+            $nama = $matakuliah->nama_mk;
+
+            // Detach pivot dulu sebelum delete (opsional, cascade sudah handle ini)
+            $matakuliah->prodis()->detach();
             $matakuliah->delete();
 
             DB::commit();
 
-            Log::info('Matakuliah deleted', [
-                'id' => $id,
-                'nama_mk' => $nama_mk,
-                'user_id' => auth()->id()
-            ]);
+            Log::info('Matkul deleted', ['id' => $id, 'user_id' => Auth::id()]);
 
             return redirect()->route('matakuliah.index')
-                ->with([
-                    'alert_type' => 'danger',
-                    'message' => "Mata kuliah '{$nama_mk}' berhasil dihapus!"
-                ]);
+                ->with('success', "Mata kuliah '{$nama}' berhasil dihapus!");
 
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Error deleting matkul', ['id' => $id, 'error' => $e->getMessage()]);
 
-            Log::error('Error deleting matakuliah', [
-                'id' => $id,
-                'error' => $e->getMessage()
-            ]);
-
-            return redirect()->back()->with([
-                'alert_type' => 'danger',
-                'message' => 'Gagal menghapus mata kuliah: ' . $e->getMessage()
-            ]);
+            return redirect()->back()
+                ->with('error', 'Gagal menghapus mata kuliah: ' . $e->getMessage());
         }
     }
 }
