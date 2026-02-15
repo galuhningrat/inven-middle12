@@ -204,11 +204,12 @@
         });
 
         // Data Mata Kuliah
-        Route::get('/matakuliah', [MatkulController::class, 'index'])->name('matakuliah.index');
-        Route::post('/matakuliah/store', [MatkulController::class, 'store'])->name('matakuliah.store');
-        Route::get('/matakuliah/{matakuliah}', [MatkulController::class, 'show'])->name('matakuliah.show');
-        Route::put('/matakuliah/{matakuliah}', [MatkulController::class, 'update'])->name('matakuliah.update');
-        Route::delete('/matakuliah/{matakuliah}', [MatkulController::class, 'destroy'])->name('matakuliah.destroy');
+Route::get('/matakuliah', [MatkulController::class, 'index'])->name('matakuliah.index');
+Route::get('/matakuliah/all-data', [MatkulController::class, 'allData'])->name('matakuliah.all-data'); // ✅ NEW
+Route::post('/matakuliah/store', [MatkulController::class, 'store'])->name('matakuliah.store');
+Route::get('/matakuliah/{matakuliah}', [MatkulController::class, 'show'])->name('matakuliah.show');
+Route::put('/matakuliah/{matakuliah}', [MatkulController::class, 'update'])->name('matakuliah.update');
+Route::delete('/matakuliah/{matakuliah}', [MatkulController::class, 'destroy'])->name('matakuliah.destroy');
 
         // Data Tahun Akademik
         Route::get('/tahun-akademik', [TahunAkademikController::class, 'index'])->name('tahun-akademik.index');

@@ -151,7 +151,7 @@
     </div>
 </div>
 
-@push('scripts')
+{{-- @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const modalId = {{ $m->id }};
@@ -188,4 +188,4 @@ document.addEventListener('DOMContentLoaded', function() {
     $('[data-bs-toggle="tooltip"]').tooltip();
 });
 </script>
-@endpush
+@endpush --}}

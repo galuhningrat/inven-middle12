@@ -148,42 +148,54 @@
 
 @push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const jenisSelect = document.getElementById('jenis_mk');
-    const prodiSelect = document.getElementById('select_prodi');
-    const labelRequired = document.getElementById('label_prodi_required');
-    const hintText = document.getElementById('hint_prodi');
+$(document).ready(function() {
+    // 1. Fungsi Pintar: Mengatur Wajib/Tidak Wajib
+    function toggleProdiRequirement(selectJenis) {
+        // Deteksi apakah ini Modal Create atau Edit berdasarkan ID
+        // Jika ID = "jenis_mk", maka idSuffix kosong (Create)
+        // Jika ID = "jenis_mk_edit_12", maka idSuffix = "12" (Edit)
+        const idSuffix = selectJenis.id.replace('jenis_mk_edit_', '').replace('jenis_mk', '');
 
-    // Fungsi untuk update UI berdasarkan jenis MK
-    function updateProdiField() {
-        const jenis = jenisSelect.value;
+        // Tentukan ID elemen target
+        const prodiSelectId = idSuffix === '' ? '#select_prodi' : '#select_prodi_edit_' + idSuffix;
+        const labelId       = idSuffix === '' ? '#label_prodi_required' : '#label_prodi_required_edit_' + idSuffix;
+        const hintId        = idSuffix === '' ? '#hint_prodi' : '#hint_prodi_edit_' + idSuffix;
 
-        if (jenis === 'umum') {
-            // MK Umum: Prodi tidak wajib
-            labelRequired.classList.remove('required');
-            prodiSelect.removeAttribute('required');
-            hintText.innerHTML = '<i class="bi bi-info-circle me-1"></i>Kosongkan jika berlaku untuk <strong>semua prodi</strong>';
-            hintText.classList.add('text-primary');
+        const prodiSelect = $(prodiSelectId);
+        const label = $(labelId);
+        const hint = $(hintId);
 
-            // Clear selection (optional)
-            $(prodiSelect).val(null).trigger('change');
+        if (selectJenis.value === 'umum') {
+            // Logika untuk MK UMUM
+            label.removeClass('required');
+            prodiSelect.removeAttr('required');
+            hint.html('<i class="bi bi-info-circle me-1"></i>Berlaku untuk <strong>semua prodi</strong> (Otomatis)').addClass('text-primary');
         } else {
-            // MK Wajib/Pilihan: Prodi wajib
-            labelRequired.classList.add('required');
-            prodiSelect.setAttribute('required', 'required');
-            hintText.innerHTML = 'Pilih <strong>minimal 1 prodi</strong> untuk MK ' + (jenis === 'wajib' ? 'Wajib' : 'Pilihan');
-            hintText.classList.remove('text-primary');
+            // Logika untuk MK WAJIB/PILIHAN
+            label.addClass('required');
+            prodiSelect.attr('required', 'required');
+            hint.html('Pilih <strong>minimal 1 prodi</strong>').removeClass('text-primary');
         }
     }
 
-    // Event listener untuk perubahan jenis MK
-    jenisSelect.addEventListener('change', updateProdiField);
+    // 2. Event Listener: Jika Dropdown Jenis diganti (oleh user)
+    $(document).on('change', '[id^="jenis_mk"]', function() {
+        toggleProdiRequirement(this);
+    });
 
-    // Jalankan saat halaman pertama kali dimuat
-    updateProdiField();
+    // 3. Event Listener: Saat Modal Dibuka (Penting!)
+    $('.modal').on('shown.bs.modal', function () {
+        // A. Jalankan fungsi cek requirement supaya tampilan sesuai data yang ada
+        const jenisSelect = $(this).find('[id^="jenis_mk"]')[0];
+        if (jenisSelect) toggleProdiRequirement(jenisSelect);
 
-    // Initialize tooltip
-    $('[data-bs-toggle="tooltip"]').tooltip();
+        // B. Perbaiki bug Select2 di dalam modal (Re-inisialisasi)
+        // Ini memastikan dropdown bisa dicari dan diklik
+        $(this).find('[data-control="select2"]').select2({
+            dropdownParent: $(this),
+            width: '100%' // Memastikan lebar dropdown pas
+        });
+    });
 });
 </script>
 @endpush

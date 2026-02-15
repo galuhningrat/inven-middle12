@@ -15,14 +15,14 @@ class MatkulController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('permission:kurikulum,read')->only(['index', 'show']);
+        $this->middleware('permission:kurikulum,read')->only(['index', 'show', 'allData']);
         $this->middleware('permission:kurikulum,create')->only(['store']);
         $this->middleware('permission:kurikulum,update')->only(['update']);
         $this->middleware('permission:kurikulum,delete')->only(['destroy']);
     }
 
     // ============================================================
-    // INDEX
+    // INDEX (View by Prodi & Semester)
     // ============================================================
     public function index(Request $request)
     {
@@ -87,6 +87,34 @@ class MatkulController extends Controller
             'matkulByProdiSemester',
             'statsByProdi'
         ));
+    }
+
+    // ============================================================
+    // ALL DATA (Master List - semua MK tanpa filter prodi/semester)
+    // ============================================================
+    public function allData(Request $request)
+    {
+        $query = Matkul::with(['prodis', 'dosen.user']);
+
+        // Search
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('kode_mk', 'LIKE', "%{$search}%")
+                  ->orWhere('nama_mk', 'LIKE', "%{$search}%");
+            });
+        }
+
+        // Filter by Jenis
+        if ($request->filled('filter_jenis')) {
+            $query->where('jenis', $request->filter_jenis);
+        }
+
+        $matakuliah = $query->orderBy('kode_mk')->paginate(20);
+        $prodi      = Prodi::all();
+        $dosen      = Dosen::with('user')->get();
+
+        return view('matakuliah.all-data', compact('matakuliah', 'prodi', 'dosen'));
     }
 
     // ============================================================

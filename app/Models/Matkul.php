@@ -65,7 +65,7 @@ class Matkul extends Model
         return $query->where(function ($q) use ($prodiId) {
             // MK spesifik prodi ini
             $q->whereHas('prodis', fn($p) => $p->where('prodi.id', $prodiId))
-              // ATAU MK Umum (berlaku di semua prodi)
+              // ATAU MK Umum (berlaku di semua prodi via scope)
               ->orWhere('jenis', 'umum');
         });
     }
