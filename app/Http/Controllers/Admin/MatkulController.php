@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Dosen;
 use App\Models\Matkul;
+use App\Models\MatkulProdiSemester;
 use App\Models\Prodi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,81 +23,75 @@ class MatkulController extends Controller
     }
 
     // ============================================================
-    // INDEX (View by Prodi & Semester)
+    // INDEX — Tampilan Kurikulum per Prodi & Semester
     // ============================================================
     public function index(Request $request)
     {
-        $query = Matkul::with(['prodis', 'dosen.user']);
+        $prodi = Prodi::orderBy('kode_prodi')->get();
+        $dosen = Dosen::with('user')->get();
 
-        // Search
+        // Build query mapping dengan filter
+        $mappingQuery = MatkulProdiSemester::with([
+            'matkul' => fn($q) => $q->with(['dosen.user', 'prodiMappings.prodi']),
+        ]);
+
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function ($q) use ($search) {
+            $mappingQuery->whereHas('matkul', function ($q) use ($search) {
                 $q->where('kode_mk', 'LIKE', "%{$search}%")
                   ->orWhere('nama_mk', 'LIKE', "%{$search}%");
             });
         }
 
-        // Filter by Prodi → ambil MK spesifik prodi + semua MK Umum
         if ($request->filled('filter_prodi')) {
-            $query->forProdi((int) $request->filter_prodi);
+            $mappingQuery->where('id_prodi', (int) $request->filter_prodi);
         }
 
-        // Filter by Semester
         if ($request->filled('filter_semester')) {
-            $query->where('semester', $request->filter_semester);
+            $mappingQuery->where('semester', (int) $request->filter_semester);
         }
 
-        $matakuliah = $query->orderBy('semester')->orderBy('kode_mk')->get();
-        $prodi      = Prodi::orderBy('kode_prodi')->get();
-        $dosen      = Dosen::with('user')->get();
+        $allMappings = $mappingQuery->get();
 
         // ============================================================
-        // Kelompokkan: prodi_id → semester → collection matkul
-        // MK Umum (jenis='umum') masuk ke SEMUA prodi
+        // Kelompokkan: prodi_id → semester → Collection<MatkulProdiSemester>
         // ============================================================
-        $mkUmum = $matakuliah->where('jenis', 'umum');
-
         $matkulByProdiSemester = [];
         $statsByProdi          = [];
 
         foreach ($prodi as $p) {
-            // MK spesifik prodi ini
-            $mkSpesifik = $matakuliah->filter(function ($mk) use ($p) {
-                return $mk->jenis !== 'umum'
-                    && $mk->prodis->contains('id', $p->id);
-            });
+            $prodiMappings = $allMappings->where('id_prodi', $p->id);
 
-            // Gabung dengan MK Umum
-            $mkGabungan = $mkSpesifik->merge($mkUmum)
-                ->sortBy('semester')
-                ->sortBy('kode_mk');
-
-            $matkulByProdiSemester[$p->id] = $mkGabungan->groupBy('semester')->sortKeys();
+            $matkulByProdiSemester[$p->id] = $prodiMappings
+                ->groupBy('semester')
+                ->sortKeys();
 
             $statsByProdi[$p->id] = [
-                'total'     => $mkGabungan->count(),
-                'total_sks' => $mkGabungan->sum('bobot'),
+                'total'     => $prodiMappings->count(),
+                'total_sks' => $prodiMappings->sum(fn($mp) => $mp->matkul?->bobot ?? 0),
             ];
         }
 
+        // Total MK unik untuk tampilan header
+        $totalUniqueMatkul = $allMappings->pluck('id_matkul')->unique()->count();
+
         return view('matakuliah.index', compact(
-            'matakuliah',
             'prodi',
             'dosen',
             'matkulByProdiSemester',
-            'statsByProdi'
+            'statsByProdi',
+            'totalUniqueMatkul',
+            'allMappings'
         ));
     }
 
     // ============================================================
-    // ALL DATA (Master List - semua MK tanpa filter prodi/semester)
+    // ALL DATA — Master List semua MK tanpa filter prodi/semester
     // ============================================================
     public function allData(Request $request)
     {
-        $query = Matkul::with(['prodis', 'dosen.user']);
+        $query = Matkul::with(['prodiMappings.prodi', 'dosen.user']);
 
-        // Search
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -105,7 +100,6 @@ class MatkulController extends Controller
             });
         }
 
-        // Filter by Jenis
         if ($request->filled('filter_jenis')) {
             $query->where('jenis', $request->filter_jenis);
         }
@@ -122,46 +116,56 @@ class MatkulController extends Controller
     // ============================================================
     public function store(Request $request)
     {
-        // ✅ VALIDASI YANG DIPERBAIKI
         $validated = $request->validate([
-            'kode_mk'   => 'required|max:15|unique:matkul,kode_mk',
-            'nama_mk'   => 'required|string|max:100',
-            'bobot'     => 'required|integer|min:1|max:9',
-            'jenis'     => 'required|in:wajib,pilihan,umum',
-            'id_dosen'  => 'required|exists:dosen,id',
-            'semester'  => 'required|integer|min:1|max:14',
-            'id_prodi'  => 'nullable|array',
-            'id_prodi.*'=> 'exists:prodi,id',
+            'kode_mk'               => 'required|max:15|unique:matkul,kode_mk',
+            'nama_mk'               => 'required|string|max:100',
+            'bobot'                 => 'required|integer|min:1|max:9',
+            'jenis'                 => 'required|in:wajib,pilihan,umum',
+            'id_dosen'              => 'required|exists:dosen,id',
+
+            // Mappings: array of {prodi_id, semester, angkatan?}
+            // Semua jenis MK (termasuk Umum) WAJIB punya minimal 1 mapping.
+            'mappings'              => 'required|array|min:1',
+            'mappings.*.prodi_id'  => 'required|exists:prodi,id',
+            'mappings.*.semester'  => 'required|integer|min:1|max:14',
+            'mappings.*.angkatan'  => 'nullable|digits:4',
+        ], [
+            'mappings.required'           => 'Minimal satu mapping Prodi & Semester harus diisi.',
+            'mappings.min'                => 'Minimal satu mapping Prodi & Semester harus diisi.',
+            'mappings.*.prodi_id.required' => 'Pilih Program Studi untuk setiap mapping.',
+            'mappings.*.semester.required' => 'Pilih Semester untuk setiap mapping.',
         ]);
 
-        // ✅ VALIDASI KHUSUS: MK Wajib/Pilihan wajib punya prodi
-        if ($validated['jenis'] !== 'umum' && empty($validated['id_prodi'])) {
-            return redirect()->back()
-                ->withInput()
-                ->withErrors(['id_prodi' => 'Mata Kuliah Wajib/Pilihan harus memilih minimal 1 Program Studi.']);
+        // Validasi tidak ada duplikat (prodi + semester) dalam input yang sama
+        $pairs = array_map(
+            fn($m) => $m['prodi_id'] . '_' . $m['semester'],
+            $validated['mappings']
+        );
+        if (count($pairs) !== count(array_unique($pairs))) {
+            return redirect()->back()->withInput()
+                ->withErrors(['mappings' => 'Terdapat duplikat kombinasi Prodi & Semester.']);
         }
 
         DB::beginTransaction();
         try {
-            // Simpan matkul (tanpa id_prodi karena pakai pivot)
             $matkul = Matkul::create([
                 'kode_mk'  => strtoupper($validated['kode_mk']),
                 'nama_mk'  => $validated['nama_mk'],
                 'bobot'    => $validated['bobot'],
                 'jenis'    => $validated['jenis'],
                 'id_dosen' => $validated['id_dosen'],
-                'semester' => $validated['semester'],
             ]);
 
-            // ✅ SIMPAN KE PIVOT
-            // MK Umum: tidak perlu sync (kosong = berlaku semua prodi via scope)
-            // MK Wajib/Pilihan: sync ke prodi yang dipilih
-            if ($validated['jenis'] !== 'umum' && !empty($validated['id_prodi'])) {
-                $matkul->prodis()->sync($validated['id_prodi']);
+            foreach ($validated['mappings'] as $mapping) {
+                MatkulProdiSemester::create([
+                    'id_matkul' => $matkul->id,
+                    'id_prodi'  => $mapping['prodi_id'],
+                    'semester'  => $mapping['semester'],
+                    'angkatan'  => $mapping['angkatan'] ?? null,
+                ]);
             }
 
             DB::commit();
-
             Log::info('Matkul created', ['id' => $matkul->id, 'user_id' => Auth::id()]);
 
             return redirect()->route('matakuliah.index')
@@ -171,8 +175,7 @@ class MatkulController extends Controller
             DB::rollBack();
             Log::error('Error creating matkul', ['error' => $e->getMessage()]);
 
-            return redirect()->back()
-                ->withInput()
+            return redirect()->back()->withInput()
                 ->with('error', 'Gagal menyimpan mata kuliah: ' . $e->getMessage());
         }
     }
@@ -182,7 +185,7 @@ class MatkulController extends Controller
     // ============================================================
     public function show($id)
     {
-        $matakuliah = Matkul::with(['prodis', 'dosen.user'])->findOrFail($id);
+        $matakuliah = Matkul::with(['prodiMappings.prodi', 'dosen.user'])->findOrFail($id);
         return view('matakuliah.detail-matkul', compact('matakuliah'));
     }
 
@@ -194,23 +197,31 @@ class MatkulController extends Controller
         $matakuliah = Matkul::findOrFail($id);
 
         $validated = $request->validate([
-            'kode_mk'   => 'required|max:15|unique:matkul,kode_mk,' . $matakuliah->id,
-            'nama_mk'   => 'required|string|max:100',
-            'bobot'     => 'required|integer|min:1|max:9',
-            'jenis'     => 'required|in:wajib,pilihan,umum',
-            'id_dosen'  => 'required|exists:dosen,id',
-            'semester'  => 'required|integer|min:1|max:14',
-            'id_prodi'  => 'nullable|array',
-            'id_prodi.*'=> 'exists:prodi,id',
+            'kode_mk'               => 'required|max:15|unique:matkul,kode_mk,' . $matakuliah->id,
+            'nama_mk'               => 'required|string|max:100',
+            'bobot'                 => 'required|integer|min:1|max:9',
+            'jenis'                 => 'required|in:wajib,pilihan,umum',
+            'id_dosen'              => 'required|exists:dosen,id',
+            'mappings'              => 'required|array|min:1',
+            'mappings.*.prodi_id'  => 'required|exists:prodi,id',
+            'mappings.*.semester'  => 'required|integer|min:1|max:14',
+            'mappings.*.angkatan'  => 'nullable|digits:4',
         ], [
-            'kode_mk.unique' => 'Kode Mata Kuliah sudah digunakan oleh mata kuliah lain!',
+            'kode_mk.unique'              => 'Kode Mata Kuliah sudah digunakan oleh mata kuliah lain!',
+            'mappings.required'           => 'Minimal satu mapping Prodi & Semester harus diisi.',
+            'mappings.min'                => 'Minimal satu mapping Prodi & Semester harus diisi.',
+            'mappings.*.prodi_id.required' => 'Pilih Program Studi untuk setiap mapping.',
+            'mappings.*.semester.required' => 'Pilih Semester untuk setiap mapping.',
         ]);
 
-        // ✅ VALIDASI KHUSUS
-        if ($validated['jenis'] !== 'umum' && empty($validated['id_prodi'])) {
-            return redirect()->back()
-                ->withInput()
-                ->withErrors(['id_prodi' => 'Mata Kuliah Wajib/Pilihan harus memilih minimal 1 Program Studi.']);
+        // Validasi duplikat kombinasi
+        $pairs = array_map(
+            fn($m) => $m['prodi_id'] . '_' . $m['semester'],
+            $validated['mappings']
+        );
+        if (count($pairs) !== count(array_unique($pairs))) {
+            return redirect()->back()->withInput()
+                ->withErrors(['mappings' => 'Terdapat duplikat kombinasi Prodi & Semester.']);
         }
 
         DB::beginTransaction();
@@ -221,20 +232,21 @@ class MatkulController extends Controller
                 'bobot'    => $validated['bobot'],
                 'jenis'    => $validated['jenis'],
                 'id_dosen' => $validated['id_dosen'],
-                'semester' => $validated['semester'],
             ]);
 
-            // ✅ SYNC PIVOT
-            // MK Umum → kosongkan pivot (tidak perlu prodi spesifik)
-            // MK Wajib/Pilihan → sync prodi yang dipilih
-            if ($validated['jenis'] === 'umum') {
-                $matakuliah->prodis()->detach();
-            } else {
-                $matakuliah->prodis()->sync($validated['id_prodi'] ?? []);
+            // Hapus semua mapping lama, ganti dengan yang baru
+            $matakuliah->prodiMappings()->delete();
+
+            foreach ($validated['mappings'] as $mapping) {
+                MatkulProdiSemester::create([
+                    'id_matkul' => $matakuliah->id,
+                    'id_prodi'  => $mapping['prodi_id'],
+                    'semester'  => $mapping['semester'],
+                    'angkatan'  => $mapping['angkatan'] ?? null,
+                ]);
             }
 
             DB::commit();
-
             Log::info('Matkul updated', ['id' => $matakuliah->id, 'user_id' => Auth::id()]);
 
             return redirect()->route('matakuliah.index')
@@ -244,8 +256,7 @@ class MatkulController extends Controller
             DB::rollBack();
             Log::error('Error updating matkul', ['id' => $id, 'error' => $e->getMessage()]);
 
-            return redirect()->back()
-                ->withInput()
+            return redirect()->back()->withInput()
                 ->with('error', 'Gagal mengupdate mata kuliah: ' . $e->getMessage());
         }
     }
@@ -269,12 +280,10 @@ class MatkulController extends Controller
 
             $nama = $matakuliah->nama_mk;
 
-            // Detach pivot dulu sebelum delete (opsional, cascade sudah handle ini)
-            $matakuliah->prodis()->detach();
+            // Cascade delete otomatis menghapus semua mapping di matkul_prodi_semester
             $matakuliah->delete();
 
             DB::commit();
-
             Log::info('Matkul deleted', ['id' => $id, 'user_id' => Auth::id()]);
 
             return redirect()->route('matakuliah.index')

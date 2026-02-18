@@ -1,6 +1,6 @@
 <!-- Modal Tambah Mata Kuliah -->
 <div class="modal fade" id="modalTambahMatkul" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered mw-700px">
+    <div class="modal-dialog modal-dialog-centered mw-750px">
         <div class="modal-content">
             <form id="form_tambah_matkul" method="POST" action="{{ route('matakuliah.store') }}">
                 @csrf
@@ -37,44 +37,15 @@
                             <label class="form-label required fw-semibold fs-7">Bobot SKS</label>
                             <input type="number" name="bobot"
                                 class="form-control form-control-solid"
-                                placeholder="1–9"
-                                min="1" max="9"
+                                placeholder="1–9" min="1" max="9"
                                 required
                                 value="{{ old('bobot') }}">
-                        </div>
-
-                        {{-- Semester --}}
-                        <div class="col-md-4">
-                            <label class="form-label required fw-semibold fs-7">Semester</label>
-                            <select name="semester"
-                                class="form-select form-select-solid"
-                                data-control="select2"
-                                data-hide-search="true"
-                                data-placeholder="Pilih Semester"
-                                required>
-                                <option></option>
-                                @for($s = 1; $s <= 14; $s++)
-                                <option value="{{ $s }}" {{ old('semester') == $s ? 'selected' : '' }}>
-                                    Semester {{ $s }}
-                                </option>
-                                @endfor
-                            </select>
-                        </div>
-
-                        {{-- Nama MK --}}
-                        <div class="col-12">
-                            <label class="form-label required fw-semibold fs-7">Nama Mata Kuliah</label>
-                            <input type="text" name="nama_mk"
-                                class="form-control form-control-solid"
-                                placeholder="Nama lengkap mata kuliah"
-                                required
-                                value="{{ old('nama_mk') }}">
                         </div>
 
                         {{-- Jenis MK --}}
                         <div class="col-md-4">
                             <label class="form-label required fw-semibold fs-7">Jenis</label>
-                            <select name="jenis" id="jenis_mk"
+                            <select name="jenis"
                                 class="form-select form-select-solid"
                                 data-control="select2"
                                 data-hide-search="true"
@@ -87,29 +58,14 @@
                             </select>
                         </div>
 
-                        {{-- Program Studi (MULTIPLE SELECT) --}}
-                        <div class="col-md-8">
-                            <label class="form-label fw-semibold fs-7">
-                                <span id="label_prodi_required" class="required">Program Studi</span>
-                                <i class="bi bi-info-circle text-muted ms-1"
-                                   data-bs-toggle="tooltip"
-                                   title="MK Umum: Kosongkan (berlaku semua prodi). MK Wajib/Pilihan: Pilih minimal 1 prodi."></i>
-                            </label>
-                            <select name="id_prodi[]" id="select_prodi"
-                                class="form-select form-select-solid"
-                                data-control="select2"
-                                data-placeholder="Pilih Program Studi"
-                                multiple>
-                                @foreach($prodi as $p)
-                                <option value="{{ $p->id }}"
-                                    {{ is_array(old('id_prodi')) && in_array($p->id, old('id_prodi')) ? 'selected' : '' }}>
-                                    {{ $p->nama_prodi }} ({{ $p->kode_prodi }})
-                                </option>
-                                @endforeach
-                            </select>
-                            <div class="form-text text-muted fs-8">
-                                <span id="hint_prodi">Pilih satu atau lebih program studi</span>
-                            </div>
+                        {{-- Nama MK --}}
+                        <div class="col-12">
+                            <label class="form-label required fw-semibold fs-7">Nama Mata Kuliah</label>
+                            <input type="text" name="nama_mk"
+                                class="form-control form-control-solid"
+                                placeholder="Nama lengkap mata kuliah"
+                                required
+                                value="{{ old('nama_mk') }}">
                         </div>
 
                         {{-- Dosen Pengampu --}}
@@ -131,6 +87,77 @@
                         </div>
 
                     </div>
+
+                    {{-- ===== MAPPING PRODI & SEMESTER ===== --}}
+                    <div class="separator separator-dashed my-5"></div>
+
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div>
+                            <h6 class="fw-bolder text-dark mb-0">
+                                <i class="bi bi-diagram-3 me-1 text-primary"></i>
+                                Mapping Prodi & Semester
+                            </h6>
+                            <span class="text-muted fs-8">
+                                MK ini akan muncul di kombinasi Prodi + Semester berikut.
+                                MK Umum pun bisa dipetakan ke semester yang berbeda di tiap prodi.
+                            </span>
+                        </div>
+                    </div>
+
+                    {{-- Header kolom --}}
+                    <div class="row g-2 mb-2 px-1">
+                        <div class="col">
+                            <span class="text-muted fs-8 fw-semibold text-uppercase">Program Studi</span>
+                        </div>
+                        <div class="col-auto" style="width:170px">
+                            <span class="text-muted fs-8 fw-semibold text-uppercase">Semester</span>
+                        </div>
+                        <div class="col-auto" style="width:40px"></div>
+                    </div>
+
+                    {{-- Mapping rows container --}}
+                    <div id="mapping-rows-tambah">
+                        {{-- Baris pertama tidak bisa dihapus --}}
+                        <div class="mapping-row d-flex align-items-center gap-2 mb-2">
+                            <div class="flex-grow-1">
+                                <select name="mappings[0][prodi_id]"
+                                    class="form-select form-select-solid form-select-sm select2-prodi-tambah"
+                                    required>
+                                    <option value="">-- Pilih Prodi --</option>
+                                    @foreach($prodi as $p)
+                                    <option value="{{ $p->id }}">{{ $p->nama_prodi }} ({{ $p->kode_prodi }})</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div style="width:170px; flex-shrink:0">
+                                <select name="mappings[0][semester]"
+                                    class="form-select form-select-solid form-select-sm"
+                                    required>
+                                    <option value="">-- Semester --</option>
+                                    @for($s = 1; $s <= 14; $s++)
+                                    <option value="{{ $s }}">Semester {{ $s }}</option>
+                                    @endfor
+                                </select>
+                            </div>
+                            <div style="width:36px; flex-shrink:0">
+                                <button type="button"
+                                    class="btn btn-icon btn-sm btn-light remove-mapping-tambah"
+                                    title="Hapus baris" disabled>
+                                    <i class="bi bi-trash text-danger"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" id="btn-tambah-mapping" class="btn btn-sm btn-light-primary mt-1">
+                        <i class="bi bi-plus-circle me-1"></i>Tambah Prodi & Semester
+                    </button>
+
+                    {{-- Error mapping --}}
+                    @error('mappings')
+                        <div class="text-danger fs-8 mt-2">{{ $message }}</div>
+                    @enderror
+
                 </div>
 
                 <div class="modal-footer border-0 pt-0 justify-content-between">
@@ -148,54 +175,79 @@
 
 @push('scripts')
 <script>
-$(document).ready(function() {
-    // 1. Fungsi Pintar: Mengatur Wajib/Tidak Wajib
-    function toggleProdiRequirement(selectJenis) {
-        // Deteksi apakah ini Modal Create atau Edit berdasarkan ID
-        // Jika ID = "jenis_mk", maka idSuffix kosong (Create)
-        // Jika ID = "jenis_mk_edit_12", maka idSuffix = "12" (Edit)
-        const idSuffix = selectJenis.id.replace('jenis_mk_edit_', '').replace('jenis_mk', '');
+(function() {
+    // Template untuk baris prodi baru
+    const prodiOptions = `
+        @foreach($prodi as $p)
+        <option value="{{ $p->id }}">{{ $p->nama_prodi }} ({{ $p->kode_prodi }})</option>
+        @endforeach
+    `;
 
-        // Tentukan ID elemen target
-        const prodiSelectId = idSuffix === '' ? '#select_prodi' : '#select_prodi_edit_' + idSuffix;
-        const labelId       = idSuffix === '' ? '#label_prodi_required' : '#label_prodi_required_edit_' + idSuffix;
-        const hintId        = idSuffix === '' ? '#hint_prodi' : '#hint_prodi_edit_' + idSuffix;
+    const semesterOptions = `
+        @for($s = 1; $s <= 14; $s++)
+        <option value="{{ $s }}">Semester {{ $s }}</option>
+        @endfor
+    `;
 
-        const prodiSelect = $(prodiSelectId);
-        const label = $(labelId);
-        const hint = $(hintId);
+    let tambahIndex = 1; // Baris ke-0 sudah ada di HTML
 
-        if (selectJenis.value === 'umum') {
-            // Logika untuk MK UMUM
-            label.removeClass('required');
-            prodiSelect.removeAttr('required');
-            hint.html('<i class="bi bi-info-circle me-1"></i>Berlaku untuk <strong>semua prodi</strong> (Otomatis)').addClass('text-primary');
-        } else {
-            // Logika untuk MK WAJIB/PILIHAN
-            label.addClass('required');
-            prodiSelect.attr('required', 'required');
-            hint.html('Pilih <strong>minimal 1 prodi</strong>').removeClass('text-primary');
+    // Tambah baris mapping baru
+    document.getElementById('btn-tambah-mapping')?.addEventListener('click', function () {
+        const container = document.getElementById('mapping-rows-tambah');
+        const idx = tambahIndex++;
+
+        const row = document.createElement('div');
+        row.className = 'mapping-row d-flex align-items-center gap-2 mb-2';
+        row.innerHTML = `
+            <div class="flex-grow-1">
+                <select name="mappings[${idx}][prodi_id]"
+                    class="form-select form-select-solid form-select-sm"
+                    required>
+                    <option value="">-- Pilih Prodi --</option>
+                    ${prodiOptions}
+                </select>
+            </div>
+            <div style="width:170px; flex-shrink:0">
+                <select name="mappings[${idx}][semester]"
+                    class="form-select form-select-solid form-select-sm"
+                    required>
+                    <option value="">-- Semester --</option>
+                    ${semesterOptions}
+                </select>
+            </div>
+            <div style="width:36px; flex-shrink:0">
+                <button type="button"
+                    class="btn btn-icon btn-sm btn-light remove-mapping-tambah"
+                    title="Hapus baris">
+                    <i class="bi bi-trash text-danger"></i>
+                </button>
+            </div>
+        `;
+        container.appendChild(row);
+        updateRemoveButtons('mapping-rows-tambah', 'remove-mapping-tambah');
+    });
+
+    // Hapus baris (delegasi event)
+    document.addEventListener('click', function (e) {
+        if (e.target.closest('.remove-mapping-tambah')) {
+            const row = e.target.closest('.mapping-row');
+            const container = document.getElementById('mapping-rows-tambah');
+            if (container && container.querySelectorAll('.mapping-row').length > 1) {
+                row.remove();
+                updateRemoveButtons('mapping-rows-tambah', 'remove-mapping-tambah');
+            }
         }
-    }
-
-    // 2. Event Listener: Jika Dropdown Jenis diganti (oleh user)
-    $(document).on('change', '[id^="jenis_mk"]', function() {
-        toggleProdiRequirement(this);
     });
 
-    // 3. Event Listener: Saat Modal Dibuka (Penting!)
-    $('.modal').on('shown.bs.modal', function () {
-        // A. Jalankan fungsi cek requirement supaya tampilan sesuai data yang ada
-        const jenisSelect = $(this).find('[id^="jenis_mk"]')[0];
-        if (jenisSelect) toggleProdiRequirement(jenisSelect);
-
-        // B. Perbaiki bug Select2 di dalam modal (Re-inisialisasi)
-        // Ini memastikan dropdown bisa dicari dan diklik
-        $(this).find('[data-control="select2"]').select2({
-            dropdownParent: $(this),
-            width: '100%' // Memastikan lebar dropdown pas
+    // Disable tombol hapus jika hanya tersisa 1 baris
+    function updateRemoveButtons(containerId, btnClass) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        const rows = container.querySelectorAll('.mapping-row');
+        container.querySelectorAll('.' + btnClass).forEach(btn => {
+            btn.disabled = rows.length <= 1;
         });
-    });
-});
+    }
+})();
 </script>
 @endpush
