@@ -8,13 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * Model untuk tabel matkul (Master Data Mata Kuliah).
  *
- * PERUBAHAN dari versi lama:
- *   - Kolom `semester` DIHAPUS dari tabel ini.
- *     Semester kini disimpan di pivot `matkul_prodi_semester`
- *     sehingga MK yang sama bisa berada di semester berbeda
- *     pada tiap prodi.
- *   - Relasi `prodis()` (many-to-many via matkul_prodi) DIGANTI
- *     dengan `prodiMappings()` (hasMany via matkul_prodi_semester).
+ * Struktur kolom saat ini:
+ *   - id, kode_mk, nama_mk, bobot, jenis, id_dosen
+ *   - created_at, updated_at
+ *
+ * NOTE: Kolom `semester` dan `id_prodi` sudah DIHAPUS dari tabel ini.
+ * Relasi ke prodi dan info semester kini ada di pivot matkul_prodi_semester.
  */
 class Matkul extends Model
 {
@@ -29,7 +28,7 @@ class Matkul extends Model
         'bobot',
         'jenis',
         'id_dosen',
-        // semester TIDAK ADA DI SINI — ada di pivot matkul_prodi_semester
+        // TIDAK ADA: semester, id_prodi — keduanya sudah dipindah ke pivot
     ];
 
     protected $casts = [
@@ -42,8 +41,7 @@ class Matkul extends Model
 
     /**
      * Semua mapping prodi+semester untuk MK ini.
-     *
-     * Satu record mapping = "MK ini ada di Prodi X pada Semester Y".
+     * Satu record = "MK ini ada di Prodi X pada Semester Y".
      */
     public function prodiMappings()
     {
@@ -80,16 +78,24 @@ class Matkul extends Model
             ->toArray();
     }
 
+    /**
+     * Cek apakah MK sudah dipetakan ke prodi+semester tertentu.
+     */
+    public function isMappedTo(int $prodiId, int $semester): bool
+    {
+        return $this->prodiMappings
+            ->where('id_prodi', $prodiId)
+            ->where('semester', $semester)
+            ->isNotEmpty();
+    }
+
     // ============================================================
     // SCOPE
     // ============================================================
 
     /**
-     * Scope: MK yang dipetakan ke prodi tertentu
-     * (terlepas dari jenisnya: wajib / pilihan / umum).
-     *
-     * CATATAN: Tidak ada lagi logika khusus `jenis='umum'`.
-     * Semua MK — termasuk MK Umum — harus dipetakan secara eksplisit.
+     * Scope: MK yang dipetakan ke prodi tertentu.
+     * Berlaku untuk semua jenis MK (wajib, pilihan, umum).
      */
     public function scopeForProdi($query, int $prodiId)
     {
@@ -101,6 +107,7 @@ class Matkul extends Model
 
     /**
      * Scope: MK yang dipetakan ke prodi + semester tertentu.
+     * Ini adalah scope utama untuk menampilkan kurikulum per semester.
      */
     public function scopeForProdiSemester($query, int $prodiId, int $semester)
     {
@@ -108,5 +115,14 @@ class Matkul extends Model
             'prodiMappings',
             fn($q) => $q->where('id_prodi', $prodiId)->where('semester', $semester)
         );
+    }
+
+    /**
+     * Scope: Hanya MK yang belum memiliki mapping sama sekali.
+     * Berguna untuk menemukan MK "orphan" yang perlu di-mapping.
+     */
+    public function scopeWithoutMapping($query)
+    {
+        return $query->whereDoesntHave('prodiMappings');
     }
 }

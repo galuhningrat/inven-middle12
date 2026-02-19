@@ -53,9 +53,7 @@ class MatkulController extends Controller
 
         $allMappings = $mappingQuery->get();
 
-        // ============================================================
         // Kelompokkan: prodi_id → semester → Collection<MatkulProdiSemester>
-        // ============================================================
         $matkulByProdiSemester = [];
         $statsByProdi          = [];
 
@@ -72,7 +70,6 @@ class MatkulController extends Controller
             ];
         }
 
-        // Total MK unik untuk tampilan header
         $totalUniqueMatkul = $allMappings->pluck('id_matkul')->unique()->count();
 
         return view('matakuliah.index', compact(
@@ -104,11 +101,19 @@ class MatkulController extends Controller
             $query->where('jenis', $request->filter_jenis);
         }
 
+        // Filter: MK tanpa mapping (orphan)
+        if ($request->filled('filter_orphan') && $request->filter_orphan === '1') {
+            $query->withoutMapping();
+        }
+
         $matakuliah = $query->orderBy('kode_mk')->paginate(20);
         $prodi      = Prodi::all();
         $dosen      = Dosen::with('user')->get();
 
-        return view('matakuliah.all-data', compact('matakuliah', 'prodi', 'dosen'));
+        // Hitung MK orphan untuk notifikasi
+        $totalOrphan = Matkul::withoutMapping()->count();
+
+        return view('matakuliah.all-data', compact('matakuliah', 'prodi', 'dosen', 'totalOrphan'));
     }
 
     // ============================================================
@@ -117,21 +122,20 @@ class MatkulController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'kode_mk'               => 'required|max:15|unique:matkul,kode_mk',
-            'nama_mk'               => 'required|string|max:100',
-            'bobot'                 => 'required|integer|min:1|max:9',
-            'jenis'                 => 'required|in:wajib,pilihan,umum',
-            'id_dosen'              => 'required|exists:dosen,id',
+            'kode_mk'              => 'required|max:15|unique:matkul,kode_mk',
+            'nama_mk'              => 'required|string|max:100',
+            'bobot'                => 'required|integer|min:1|max:9',
+            'jenis'                => 'required|in:wajib,pilihan,umum',
+            'id_dosen'             => 'required|exists:dosen,id',
 
-            // Mappings: array of {prodi_id, semester, angkatan?}
-            // Semua jenis MK (termasuk Umum) WAJIB punya minimal 1 mapping.
-            'mappings'              => 'required|array|min:1',
+            // Mappings: wajib minimal 1 untuk semua jenis MK
+            'mappings'             => 'required|array|min:1',
             'mappings.*.prodi_id'  => 'required|exists:prodi,id',
             'mappings.*.semester'  => 'required|integer|min:1|max:14',
             'mappings.*.angkatan'  => 'nullable|digits:4',
         ], [
-            'mappings.required'           => 'Minimal satu mapping Prodi & Semester harus diisi.',
-            'mappings.min'                => 'Minimal satu mapping Prodi & Semester harus diisi.',
+            'mappings.required'            => 'Minimal satu mapping Prodi & Semester harus diisi.',
+            'mappings.min'                 => 'Minimal satu mapping Prodi & Semester harus diisi.',
             'mappings.*.prodi_id.required' => 'Pilih Program Studi untuk setiap mapping.',
             'mappings.*.semester.required' => 'Pilih Semester untuk setiap mapping.',
         ]);
@@ -197,19 +201,19 @@ class MatkulController extends Controller
         $matakuliah = Matkul::findOrFail($id);
 
         $validated = $request->validate([
-            'kode_mk'               => 'required|max:15|unique:matkul,kode_mk,' . $matakuliah->id,
-            'nama_mk'               => 'required|string|max:100',
-            'bobot'                 => 'required|integer|min:1|max:9',
-            'jenis'                 => 'required|in:wajib,pilihan,umum',
-            'id_dosen'              => 'required|exists:dosen,id',
-            'mappings'              => 'required|array|min:1',
+            'kode_mk'              => 'required|max:15|unique:matkul,kode_mk,' . $matakuliah->id,
+            'nama_mk'              => 'required|string|max:100',
+            'bobot'                => 'required|integer|min:1|max:9',
+            'jenis'                => 'required|in:wajib,pilihan,umum',
+            'id_dosen'             => 'required|exists:dosen,id',
+            'mappings'             => 'required|array|min:1',
             'mappings.*.prodi_id'  => 'required|exists:prodi,id',
             'mappings.*.semester'  => 'required|integer|min:1|max:14',
             'mappings.*.angkatan'  => 'nullable|digits:4',
         ], [
-            'kode_mk.unique'              => 'Kode Mata Kuliah sudah digunakan oleh mata kuliah lain!',
-            'mappings.required'           => 'Minimal satu mapping Prodi & Semester harus diisi.',
-            'mappings.min'                => 'Minimal satu mapping Prodi & Semester harus diisi.',
+            'kode_mk.unique'               => 'Kode Mata Kuliah sudah digunakan oleh mata kuliah lain!',
+            'mappings.required'            => 'Minimal satu mapping Prodi & Semester harus diisi.',
+            'mappings.min'                 => 'Minimal satu mapping Prodi & Semester harus diisi.',
             'mappings.*.prodi_id.required' => 'Pilih Program Studi untuk setiap mapping.',
             'mappings.*.semester.required' => 'Pilih Semester untuk setiap mapping.',
         ]);

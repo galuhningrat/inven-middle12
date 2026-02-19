@@ -9,15 +9,17 @@ use Illuminate\Database\Eloquent\Model;
  *
  * Satu record = "MK X tampil di Prodi Y pada Semester Z".
  *
- * Fleksibilitas:
- *   MK Pancasila → TI  : Semester 1
- *   MK Pancasila → SI  : Semester 4
- *   MK Pancasila → EL  : Semester 2
+ * Contoh fleksibilitas:
+ *   MK Pancasila (MKU) → TI  : Semester 1
+ *   MK Pancasila (MKU) → SI  : Semester 4
+ *   MK Pancasila (MKU) → EL  : Semester 2
  *
- * @property int    $id
- * @property int    $id_matkul
- * @property int    $id_prodi
- * @property int    $semester
+ * Inilah kunci mengapa semester diletakkan di pivot, bukan di matkul.
+ *
+ * @property int         $id
+ * @property int         $id_matkul
+ * @property int         $id_prodi
+ * @property int         $semester
  * @property string|null $angkatan
  */
 class MatkulProdiSemester extends Model
@@ -67,7 +69,10 @@ class MatkulProdiSemester extends Model
         return $query->where('semester', $semester);
     }
 
-    /** Filter mapping untuk angkatan tertentu (atau null = berlaku semua) */
+    /**
+     * Filter mapping untuk angkatan tertentu.
+     * null = berlaku untuk semua angkatan.
+     */
     public function scopeForAngkatan($query, ?string $angkatan)
     {
         if ($angkatan) {
@@ -76,5 +81,14 @@ class MatkulProdiSemester extends Model
             });
         }
         return $query;
+    }
+
+    /**
+     * Filter MK berdasarkan jenis (wajib/pilihan/umum) via relasi.
+     * Berguna untuk memisahkan MKU dari MK Prodi di kurikulum.
+     */
+    public function scopeOfJenis($query, string $jenis)
+    {
+        return $query->whereHas('matkul', fn($q) => $q->where('jenis', $jenis));
     }
 }

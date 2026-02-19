@@ -265,7 +265,6 @@
                                                 $accordionId = 'smt_' . $loop_prodi->id . '_' . $semester;
                                                 $collapseId  = 'collapse_' . $loop_prodi->id . '_' . $semester;
 
-                                                // Hitung SKS & jenis dari mapping list
                                                 $totalSksSmt = $matkulList->sum(fn($mp) => $mp->matkul?->bobot ?? 0);
                                                 $wajib   = $matkulList->filter(fn($mp) => $mp->matkul?->jenis === 'wajib')->count();
                                                 $pilihan = $matkulList->filter(fn($mp) => $mp->matkul?->jenis === 'pilihan')->count();
@@ -335,11 +334,6 @@
                                                                     </tr>
                                                                 </thead>
                                                                 <tbody>
-                                                                    {{--
-                                                                        $matkulList adalah Collection<MatkulProdiSemester>.
-                                                                        Kita set $m = $mapping->matkul agar semua include
-                                                                        modal yang memakai variabel $m tetap kompatibel.
-                                                                    --}}
                                                                     @foreach($matkulList as $mapping)
                                                                         @php $m = $mapping->matkul; @endphp
                                                                         @if(!$m) @continue @endif
@@ -407,10 +401,6 @@
                                                                             </td>
                                                                         </tr>
 
-                                                                        {{-- Include modals per baris --}}
-                                                                        @include('matakuliah.detail-matkul', ['m' => $m])
-                                                                        @include('matakuliah.edit-matkul', ['m' => $m, 'prodi' => $prodi, 'dosen' => $dosen])
-                                                                        @include('matakuliah.delete-matkul', ['m' => $m])
                                                                     @endforeach
                                                                 </tbody>
                                                                 <tfoot class="bg-gray-50 border-top border-dashed">
@@ -427,6 +417,15 @@
                                                                 </tfoot>
                                                             </table>
                                                         </div>
+
+                                                        {{-- Modals di luar <table> agar tidak merusak struktur HTML tabel --}}
+                                                        @foreach($matkulList as $mapping)
+                                                            @php $m = $mapping->matkul; @endphp
+                                                            @if(!$m) @continue @endif
+                                                            @include('matakuliah.detail-matkul', ['m' => $m])
+                                                            @include('matakuliah.edit-matkul', ['m' => $m, 'prodi' => $prodi, 'dosen' => $dosen])
+                                                            @include('matakuliah.delete-matkul', ['m' => $m])
+                                                        @endforeach
                                                     </div>
                                                 </div>
                                             </div>
@@ -487,8 +486,7 @@
                 });
             });
 
-        // ===== HANDLER MAPPING EDIT (dinamis, berlaku untuk semua modal edit) =====
-        // Menggunakan event delegation agar bekerja untuk semua modal yang di-generate via loop
+        // ===== HANDLER MAPPING EDIT =====
         const prodiOptionsHtml = `
             @foreach($prodi as $p)
             <option value="{{ $p->id }}">{{ $p->nama_prodi }} ({{ $p->kode_prodi }})</option>
@@ -500,7 +498,6 @@
             @endfor
         `;
 
-        // Tambah baris mapping pada modal edit
         document.addEventListener('click', function (e) {
             const btn = e.target.closest('.btn-tambah-mapping-edit');
             if (!btn) return;
@@ -542,9 +539,7 @@
             refreshRemoveButtons(containerId, removeClass);
         });
 
-        // Hapus baris mapping pada modal edit (delegasi dari document)
         document.addEventListener('click', function (e) {
-            // Cek apakah tombol yang diklik adalah tombol hapus mapping edit
             const btn = e.target.closest('[class*="remove-mapping-edit-"]');
             if (!btn) return;
 
@@ -556,9 +551,7 @@
 
             if (container.querySelectorAll('.mapping-row').length > 1) {
                 row.remove();
-                // Re-index nama input agar berurutan
                 reindexMappingRows(container);
-                // Tentukan class dari container id
                 const matkulId = container.id.replace('mapping-rows-edit-', '');
                 refreshRemoveButtons(container.id, 'remove-mapping-edit-' + matkulId);
             }
