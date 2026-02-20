@@ -37,7 +37,7 @@
     <a href="{{ route('jadwal.index') }}" class="btn btn-sm btn-light px-3">Reset</a>
 </form>
 <!--end::Simple Filter-->
-        
+
         <div class="card">
             <div class="card-header border-0 pt-6">
                 <div class="d-flex flex-wrap justify-content-between align-items-center w-100">
