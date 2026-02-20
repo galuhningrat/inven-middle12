@@ -140,7 +140,7 @@
                                             <i class="fas fa-user-tie text-muted small"></i>
                                         </div>
                                         <div>
-                                            <div class="small fw-semibold">{{ $mk->dosen->user->name ?? '-' }}</div>
+                                            <div class="small fw-semibold">{{ $mk->dosen->user->nama ?? '-' }}</div>
                                             <div class="text-muted" style="font-size:0.75rem">{{ $mk->dosen->nidn ?? '' }}</div>
                                         </div>
                                     </div>

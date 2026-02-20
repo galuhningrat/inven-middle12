@@ -39,7 +39,7 @@ class MatkulController extends Controller
             $search = $request->search;
             $mappingQuery->whereHas('matkul', function ($q) use ($search) {
                 $q->where('kode_mk', 'LIKE', "%{$search}%")
-                  ->orWhere('nama_mk', 'LIKE', "%{$search}%");
+                    ->orWhere('nama_mk', 'LIKE', "%{$search}%");
             });
         }
 
@@ -93,7 +93,7 @@ class MatkulController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('kode_mk', 'LIKE', "%{$search}%")
-                  ->orWhere('nama_mk', 'LIKE', "%{$search}%");
+                    ->orWhere('nama_mk', 'LIKE', "%{$search}%");
             });
         }
 
@@ -174,7 +174,6 @@ class MatkulController extends Controller
 
             return redirect()->route('matakuliah.index')
                 ->with('success', "Mata kuliah '{$matkul->nama_mk}' berhasil disimpan!");
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error creating matkul', ['error' => $e->getMessage()]);
@@ -189,12 +188,15 @@ class MatkulController extends Controller
     // ============================================================
     public function show($id)
     {
-        $matakuliah = Matkul::with(['prodiMappings.prodi', 'dosen.user'])->findOrFail($id);
-        return view('matakuliah.detail-matkul', compact('matakuliah'));
+        $m = Matkul::with(['prodiMappings.prodi', 'dosen.user'])->findOrFail($id);
+        return view('matakuliah.detail-matkul', compact('m'));
     }
 
     // ============================================================
     // UPDATE
+    // ============================================================
+    // ============================================================
+    // UPDATE — support AJAX (dari modal) dan regular form submit
     // ============================================================
     public function update(Request $request, $id)
     {
@@ -224,6 +226,11 @@ class MatkulController extends Controller
             $validated['mappings']
         );
         if (count($pairs) !== count(array_unique($pairs))) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'errors' => ['mappings' => ['Terdapat duplikat kombinasi Prodi & Semester.']]
+                ], 422);
+            }
             return redirect()->back()->withInput()
                 ->withErrors(['mappings' => 'Terdapat duplikat kombinasi Prodi & Semester.']);
         }
@@ -253,12 +260,25 @@ class MatkulController extends Controller
             DB::commit();
             Log::info('Matkul updated', ['id' => $matakuliah->id, 'user_id' => Auth::id()]);
 
+            // Jika AJAX request → kembalikan JSON sukses
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Mata kuliah '{$matakuliah->nama_mk}' berhasil diupdate!",
+                ]);
+            }
+
             return redirect()->route('matakuliah.index')
                 ->with('success', "Mata kuliah '{$matakuliah->nama_mk}' berhasil diupdate!");
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error updating matkul', ['id' => $id, 'error' => $e->getMessage()]);
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'errors' => ['server' => [$e->getMessage()]]
+                ], 500);
+            }
 
             return redirect()->back()->withInput()
                 ->with('error', 'Gagal mengupdate mata kuliah: ' . $e->getMessage());
@@ -292,7 +312,6 @@ class MatkulController extends Controller
 
             return redirect()->route('matakuliah.index')
                 ->with('success', "Mata kuliah '{$nama}' berhasil dihapus!");
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error deleting matkul', ['id' => $id, 'error' => $e->getMessage()]);

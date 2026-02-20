@@ -35,8 +35,7 @@
                         <i class="bi bi-tag me-1"></i>{{ ucfirst($m->jenis) }}
                     </span>
                     <span class="badge badge-light-primary fs-8 px-4 py-2">
-                        <i class="bi bi-diagram-3 me-1"></i>
-                        {{ $m->prodiMappings->count() }} Mapping
+                        <i class="bi bi-diagram-3 me-1"></i>{{ $m->prodiMappings->count() }} Mapping
                     </span>
                 </div>
 
@@ -86,21 +85,17 @@
                                     @foreach($m->prodiMappings->sortBy(['id_prodi', 'semester']) as $mp)
                                     <tr>
                                         <td class="ps-0">
-                                            <span class="fw-semibold text-dark">
-                                                {{ $mp->prodi->nama_prodi ?? '-' }}
-                                            </span>
+                                            <span class="fw-semibold text-dark">{{ $mp->prodi->nama_prodi ?? '-' }}</span>
                                             @if($mp->prodi)
                                             <span class="text-muted ms-1">({{ $mp->prodi->kode_prodi }})</span>
                                             @endif
                                         </td>
                                         <td class="text-center">
-                                            <span class="badge badge-light-primary">
-                                                Semester {{ $mp->semester }}
-                                            </span>
+                                            <span class="badge badge-light-primary">Semester {{ $mp->semester }}</span>
                                         </td>
                                         @if($m->prodiMappings->whereNotNull('angkatan')->isNotEmpty())
                                         <td class="text-center">
-                                            {{ $mp->angkatan ?? '<span class="text-muted">Semua</span>' }}
+                                            {!! $mp->angkatan ?? '<span class="text-muted">Semua</span>' !!}
                                         </td>
                                         @endif
                                     </tr>
@@ -111,7 +106,6 @@
                     @endif
                 </div>
 
-                {{-- Info created --}}
                 <div class="mt-5 text-muted fs-9">
                     <i class="bi bi-clock me-1"></i>
                     Dibuat: {{ $m->created_at ? $m->created_at->format('d M Y') : '-' }}
@@ -124,11 +118,21 @@
 
             <div class="modal-footer border-0 pt-0">
                 <button type="button" class="btn btn-light" data-bs-dismiss="modal">Tutup</button>
+
+                {{--
+                    PENTING — data-open-edit="{id}" digunakan sebagai hook JS.
+                    TIDAK pakai data-bs-toggle="modal" karena itu akan membuka
+                    modal Edit di atas modal Detail yang masih terbuka →
+                    backdrop ganda + z-index dropdown kacau.
+
+                    JS di edit-matkul.blade.php akan:
+                    1. Tutup modal Detail
+                    2. Tunggu hidden.bs.modal
+                    3. Buka modal Edit (Select2 di-init ulang dengan dropdownParent)
+                --}}
                 <button type="button"
                     class="btn btn-light-success"
-                    data-bs-dismiss="modal"
-                    data-bs-toggle="modal"
-                    data-bs-target="#modalEditMatkul{{ $m->id }}">
+                    data-open-edit="{{ $m->id }}">
                     <i class="bi bi-pencil me-1"></i>Edit
                 </button>
             </div>
