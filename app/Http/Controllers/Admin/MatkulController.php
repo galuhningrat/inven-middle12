@@ -172,7 +172,7 @@ class MatkulController extends Controller
             DB::commit();
             Log::info('Matkul created', ['id' => $matkul->id, 'user_id' => Auth::id()]);
 
-            return redirect()->route('matakuliah.index')
+            return redirect()->back()
                 ->with('success', "Mata kuliah '{$matkul->nama_mk}' berhasil disimpan!");
         } catch (\Exception $e) {
             DB::rollBack();
@@ -260,16 +260,28 @@ class MatkulController extends Controller
             DB::commit();
             Log::info('Matkul updated', ['id' => $matakuliah->id, 'user_id' => Auth::id()]);
 
-            // Jika AJAX request → kembalikan JSON sukses
             if ($request->ajax() || $request->wantsJson()) {
+                $matakuliah->load(['dosen.user', 'prodiMappings']);
                 return response()->json([
                     'success' => true,
                     'message' => "Mata kuliah '{$matakuliah->nama_mk}' berhasil diupdate!",
+                    'data' => [
+                        'kode_mk'    => $matakuliah->kode_mk,
+                        'nama_mk'    => $matakuliah->nama_mk,
+                        'bobot'      => $matakuliah->bobot,
+                        'jenis'      => $matakuliah->jenis,
+                        'id_dosen'   => $matakuliah->id_dosen,
+                        'dosen_nama' => $matakuliah->dosen->user->nama ?? '-',
+                        'mappings'   => $matakuliah->prodiMappings->map(fn($mp) => [
+                            'prodi_id' => $mp->id_prodi,
+                            'semester' => $mp->semester,
+                        ]),
+                    ],
                 ]);
             }
 
-            return redirect()->route('matakuliah.index')
-                ->with('success', "Mata kuliah '{$matakuliah->nama_mk}' berhasil diupdate!");
+            return redirect()->back()
+                ->with('success', "Mata kuliah '{$matakuliah->nama_mk}' berhasil disimpan!");
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error updating matkul', ['id' => $id, 'error' => $e->getMessage()]);
@@ -310,8 +322,8 @@ class MatkulController extends Controller
             DB::commit();
             Log::info('Matkul deleted', ['id' => $id, 'user_id' => Auth::id()]);
 
-            return redirect()->route('matakuliah.index')
-                ->with('success', "Mata kuliah '{$nama}' berhasil dihapus!");
+            return redirect()->back()
+                ->with('success', "Mata kuliah '{$matakuliah->nama_mk}' berhasil disimpan!");
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error deleting matkul', ['id' => $id, 'error' => $e->getMessage()]);
