@@ -82,7 +82,7 @@ class MatkulController extends Controller
         ));
     }
 
-    // ============================================================
+// ============================================================
     // ALL DATA — Master List semua MK tanpa filter prodi/semester
     // ============================================================
     public function allData(Request $request)
@@ -106,12 +106,20 @@ class MatkulController extends Controller
             $query->withoutMapping();
         }
 
-        $matakuliah = $query->orderBy('kode_mk')->paginate(20);
+        $matakuliah = $query->orderBy('kode_mk')->paginate(20)->withQueryString();
         $prodi      = Prodi::all();
         $dosen      = Dosen::with('user')->get();
 
         // Hitung MK orphan untuk notifikasi
         $totalOrphan = Matkul::withoutMapping()->count();
+
+        // Jika AJAX request → kembalikan partial view saja (untuk live search)
+        if ($request->ajax() || $request->wantsJson() || $request->get('ajax') === '1') {
+    return response()->json([
+        'html'  => view('matakuliah.partials.all-data-table', compact('matakuliah', 'prodi', 'dosen'))->render(),
+        'total' => $matakuliah->total(),
+    ]);
+}
 
         return view('matakuliah.all-data', compact('matakuliah', 'prodi', 'dosen', 'totalOrphan'));
     }

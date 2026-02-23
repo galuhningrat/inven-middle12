@@ -1,264 +1,273 @@
 @extends('master.app')
 
-@section('title', 'Master Data Mata Kuliah')
+@section('toolbar')
+    <div class="toolbar" id="kt_toolbar">
+        <div id="kt_toolbar_container" class="container-fluid d-flex flex-stack">
+            <div data-kt-swapper="true" data-kt-swapper-mode="prepend"
+                data-kt-swapper-parent="{default: '#kt_content_container', 'lg': '#kt_toolbar_container'}"
+                class="page-title d-flex align-items-center flex-wrap me-3 mb-5 mb-lg-0">
+                <h1 class="d-flex align-items-center text-dark fw-bolder fs-3 my-1">Master Data Mata Kuliah</h1>
+                <span class="h-20px border-gray-200 border-start mx-4"></span>
+                <ul class="breadcrumb breadcrumb-separatorless fw-bold fs-7 my-1">
+                    <li class="breadcrumb-item text-muted">Dashboard</li>
+                    <li class="breadcrumb-item"><span class="bullet bg-gray-200 w-5px h-2px"></span></li>
+                    <li class="breadcrumb-item text-muted">
+                        <a href="{{ route('matakuliah.index') }}" class="text-muted text-hover-primary">Mata Kuliah</a>
+                    </li>
+                    <li class="breadcrumb-item"><span class="bullet bg-gray-200 w-5px h-2px"></span></li>
+                    <li class="breadcrumb-item text-dark">Master Data</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+@endsection
 
 @section('content')
-<div class="container-fluid py-4">
+    <div class="post d-flex flex-column-fluid" id="kt_post">
+        <div id="kt_content_container" class="container-fluid">
 
-    {{-- Page Header --}}
-    <div class="d-flex align-items-center justify-content-between mb-4">
-        <div>
-            <h4 class="fw-bold mb-1">Master Data Mata Kuliah</h4>
-            <p class="text-muted mb-0">Daftar seluruh mata kuliah yang terdaftar di sistem</p>
-        </div>
-        <div class="d-flex gap-2">
-            <a href="{{ route('matakuliah.index') }}" class="btn btn-outline-secondary btn-sm">
-                <i class="fas fa-layer-group me-1"></i> Tampilan Kurikulum
-            </a>
-            @can('kurikulum', 'create')
-            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalTambahMatkul">
-                <i class="fas fa-plus me-1"></i> Tambah Mata Kuliah
-            </button>
-            @endcan
-        </div>
-    </div>
+            @include('master.notification')
 
-    {{-- Alert Orphan --}}
-    @if($totalOrphan > 0)
-    <div class="alert alert-warning d-flex align-items-center gap-2 mb-4" role="alert">
-        <i class="fas fa-exclamation-triangle"></i>
-        <div>
-            <strong>{{ $totalOrphan }} mata kuliah</strong> belum dipetakan ke Prodi & Semester manapun.
-            <a href="{{ request()->fullUrlWithQuery(['filter_orphan' => '1']) }}" class="alert-link ms-1">Tampilkan saja yang belum dipetakan →</a>
-        </div>
-    </div>
-    @endif
-
-    {{-- Session Messages --}}
-    @if(session('success'))
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        <i class="fas fa-check-circle me-2"></i> {{ session('success') }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-    @endif
-    @if(session('error'))
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <i class="fas fa-times-circle me-2"></i> {{ session('error') }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-    @endif
-
-    {{-- Filter & Search --}}
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-body py-3">
-            <form method="GET" action="{{ url()->current() }}" class="row g-2 align-items-end">
-                <div class="col-md-5">
-                    <label class="form-label small text-muted mb-1">Cari Mata Kuliah</label>
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
-                        <input type="text" name="search" class="form-control border-start-0"
-                               placeholder="Kode MK atau nama mata kuliah..."
-                               value="{{ request('search') }}">
+            {{-- ===== HEADER STATS ===== --}}
+            <div class="row g-5 mb-6">
+                <div class="col-sm-6 col-xl-3">
+                    <div class="card card-flush h-lg-100">
+                        <div class="card-body d-flex align-items-center gap-4 py-4">
+                            <div class="symbol symbol-50px symbol-circle bg-light-primary flex-shrink-0">
+                                <span class="symbol-label"><i class="bi bi-book-fill text-primary fs-3"></i></span>
+                            </div>
+                            <div>
+                                <div class="text-muted fs-8 fw-semibold text-uppercase ls-1 mb-1">Total MK</div>
+                                <div class="fs-2 fw-bolder text-dark">{{ $matakuliah->total() }}</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label small text-muted mb-1">Jenis</label>
-                    <select name="filter_jenis" class="form-select form-select-sm">
-                        <option value="">-- Semua Jenis --</option>
-                        <option value="wajib" {{ request('filter_jenis') === 'wajib' ? 'selected' : '' }}>Wajib</option>
-                        <option value="pilihan" {{ request('filter_jenis') === 'pilihan' ? 'selected' : '' }}>Pilihan</option>
-                        <option value="umum" {{ request('filter_jenis') === 'umum' ? 'selected' : '' }}>Umum (MKU)</option>
-                    </select>
+                <div class="col-sm-6 col-xl-3">
+                    <div class="card card-flush h-lg-100">
+                        <div class="card-body d-flex align-items-center gap-4 py-4">
+                            <div class="symbol symbol-50px symbol-circle bg-light-danger flex-shrink-0">
+                                <span class="symbol-label"><i
+                                        class="bi bi-exclamation-triangle-fill text-danger fs-3"></i></span>
+                            </div>
+                            <div>
+                                <div class="text-muted fs-8 fw-semibold text-uppercase ls-1 mb-1">Tanpa Mapping</div>
+                                <div class="fs-2 fw-bolder text-dark">{{ $totalOrphan }}</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label small text-muted mb-1">Status</label>
-                    <select name="filter_orphan" class="form-select form-select-sm">
-                        <option value="">-- Semua --</option>
-                        <option value="1" {{ request('filter_orphan') === '1' ? 'selected' : '' }}>Belum dipetakan</option>
-                    </select>
+                <div class="col-sm-6 col-xl-3">
+                    <div class="card card-flush h-lg-100">
+                        <div class="card-body d-flex align-items-center gap-4 py-4">
+                            <div class="symbol symbol-50px symbol-circle bg-light-success flex-shrink-0">
+                                <span class="symbol-label"><i class="bi bi-diagram-3-fill text-success fs-3"></i></span>
+                            </div>
+                            <div>
+                                <div class="text-muted fs-8 fw-semibold text-uppercase ls-1 mb-1">Total Prodi</div>
+                                <div class="fs-2 fw-bolder text-dark">{{ $prodi->count() }}</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-2 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary btn-sm w-100">Filter</button>
-                    <a href="{{ url()->current() }}" class="btn btn-outline-secondary btn-sm w-100">Reset</a>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    {{-- Table --}}
-    <div class="card shadow-sm border-0">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th class="ps-4" style="width:40px">#</th>
-                            <th>Kode MK</th>
-                            <th>Nama Mata Kuliah</th>
-                            <th class="text-center">SKS</th>
-                            <th class="text-center">Jenis</th>
-                            <th>Dosen Pengampu</th>
-                            <th>Prodi & Semester</th>
-                            <th class="text-center pe-4">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($matakuliah as $index => $mk)
-                        @php
-                            $mappings = $mk->prodiMappings->sortBy('semester');
-                            $isOrphan = $mappings->isEmpty();
-                        @endphp
-                        <tr class="{{ $isOrphan ? 'table-warning' : '' }}">
-                            <td class="ps-4 text-muted small">{{ $matakuliah->firstItem() + $index }}</td>
-                            <td>
-                                <code class="fw-semibold">{{ $mk->kode_mk }}</code>
-                            </td>
-                            <td>
-                                <div class="fw-semibold">{{ $mk->nama_mk }}</div>
-                                @if($isOrphan)
-                                <small class="text-warning"><i class="fas fa-exclamation-circle"></i> Belum dipetakan</small>
-                                @endif
-                            </td>
-                            <td class="text-center">
-                                <span class="badge bg-secondary">{{ $mk->bobot }} SKS</span>
-                            </td>
-                            <td class="text-center">
-                                @php
-                                    $badgeClass = match($mk->jenis) {
-                                        'wajib'   => 'bg-primary',
-                                        'pilihan' => 'bg-success',
-                                        'umum'    => 'bg-info',
-                                        default   => 'bg-secondary',
-                                    };
-                                @endphp
-                                <span class="badge {{ $badgeClass }}">{{ ucfirst($mk->jenis) }}</span>
-                            </td>
-                            <td>
-                                @if($mk->dosen)
-                                    <div class="d-flex align-items-center gap-2">
-                                        <div class="avatar avatar-sm bg-light rounded-circle d-flex align-items-center justify-content-center" style="width:32px;height:32px;">
-                                            <i class="fas fa-user-tie text-muted small"></i>
-                                        </div>
-                                        <div>
-                                            <div class="small fw-semibold">{{ $mk->dosen->user->nama ?? '-' }}</div>
-                                            <div class="text-muted" style="font-size:0.75rem">{{ $mk->dosen->nidn ?? '' }}</div>
-                                        </div>
-                                    </div>
-                                @else
-                                    <span class="text-muted small">—</span>
-                                @endif
-                            </td>
-                            <td>
-                                @if($mappings->isNotEmpty())
-                                    @foreach($mappings->groupBy('id_prodi') as $prodiId => $prodiMappings)
-                                    <div class="mb-1">
-                                        <span class="badge bg-light text-dark border me-1" style="font-size:0.72rem">
-                                            {{ $prodiMappings->first()->prodi->kode_prodi ?? '—' }}
-                                        </span>
-                                        @foreach($prodiMappings->sortBy('semester') as $pm)
-                                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary" style="font-size:0.72rem">
-                                            Smt {{ $pm->semester }}
-                                        </span>
-                                        @endforeach
-                                    </div>
-                                    @endforeach
-                                @else
-                                    <span class="text-muted small fst-italic">Belum dipetakan</span>
-                                @endif
-                            </td>
-                            <td class="text-center pe-4">
-                                <div class="dropdown">
-                                    <button class="btn btn-sm btn-light" data-bs-toggle="dropdown">
-                                        <i class="fas fa-ellipsis-v"></i>
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                                        <li>
-                                            <a class="dropdown-item" href="{{ route('matakuliah.show', $mk->id) }}">
-                                                <i class="fas fa-eye text-info me-2"></i> Detail
-                                            </a>
-                                        </li>
-                                        @can('kurikulum', 'update')
-                                        <li>
-                                            <button class="dropdown-item" onclick="editMatkul({{ json_encode($mk) }}, {{ json_encode($mk->prodiMappings) }})">
-                                                <i class="fas fa-edit text-warning me-2"></i> Edit
-                                            </button>
-                                        </li>
-                                        @endcan
-                                        @can('kurikulum', 'delete')
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li>
-                                            <button class="dropdown-item text-danger"
-                                                onclick="confirmDelete({{ $mk->id }}, '{{ addslashes($mk->nama_mk) }}')">
-                                                <i class="fas fa-trash me-2"></i> Hapus
-                                            </button>
-                                        </li>
-                                        @endcan
-                                    </ul>
+                <div class="col-sm-6 col-xl-3">
+                    <div class="card card-flush h-lg-100">
+                        <div class="card-body d-flex align-items-center justify-content-between py-4">
+                            <div class="d-flex align-items-center gap-4">
+                                <div class="symbol symbol-50px symbol-circle bg-light-info flex-shrink-0">
+                                    <span class="symbol-label"><i class="bi bi-grid-3x3-gap-fill text-info fs-3"></i></span>
                                 </div>
-                            </td>
-                        </tr>
-                        @empty
-                        <tr>
-                            <td colspan="8" class="text-center py-5 text-muted">
-                                <i class="fas fa-book-open fa-2x mb-2 d-block opacity-50"></i>
-                                Tidak ada mata kuliah ditemukan
-                            </td>
-                        </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-
-            {{-- Pagination --}}
-            @if($matakuliah->hasPages())
-            <div class="d-flex justify-content-between align-items-center px-4 py-3 border-top">
-                <div class="text-muted small">
-                    Menampilkan {{ $matakuliah->firstItem() }}–{{ $matakuliah->lastItem() }}
-                    dari {{ $matakuliah->total() }} mata kuliah
-                </div>
-                <div>{{ $matakuliah->withQueryString()->links() }}</div>
-            </div>
-            @endif
-        </div>
-    </div>
-
-</div>
-
-{{-- Delete Confirmation Modal --}}
-<div class="modal fade" id="modalHapus" tabindex="-1">
-    <div class="modal-dialog modal-sm modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-body text-center py-4">
-                <i class="fas fa-trash-alt fa-3x text-danger mb-3"></i>
-                <h6 class="fw-bold">Hapus Mata Kuliah?</h6>
-                <p class="text-muted small mb-3" id="deleteMatkulName"></p>
-                <div class="d-flex gap-2 justify-content-center">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
-                    <form id="formHapus" method="POST">
-                        @csrf @method('DELETE')
-                        <button type="submit" class="btn btn-danger btn-sm">Ya, Hapus</button>
-                    </form>
+                                <div>
+                                    <div class="text-muted fs-8 fw-semibold text-uppercase ls-1 mb-1">Kurikulum</div>
+                                    <div class="fs-7 fw-bold text-dark">Per Prodi</div>
+                                </div>
+                            </div>
+                            <a href="{{ route('matakuliah.index') }}" class="btn btn-sm btn-light-info">
+                                <i class="bi bi-arrow-right fs-7"></i>
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
+
+            {{-- ===== MAIN CARD ===== --}}
+            <div class="card">
+                <div class="card-header border-0 pt-6">
+                    <div class="card-title flex-column gap-2 w-100">
+                        <div class="d-flex align-items-center gap-3 w-100">
+
+                            {{-- Live Search --}}
+                            <div class="input-group input-group-solid w-300px">
+                                <span class="input-group-text border-0 bg-light ps-4">
+                                    <i class="bi bi-search text-muted fs-6" id="searchIcon"></i>
+                                    <span class="spinner-border spinner-border-sm text-muted d-none" id="searchSpinner"
+                                        style="width:14px;height:14px;border-width:2px;"></span>
+                                </span>
+                                <input type="text" id="liveSearch" class="form-control form-control-solid border-0 ps-2"
+                                    placeholder="Cari kode atau nama MK..." value="{{ request('search') }}"
+                                    autocomplete="off">
+                                <button type="button" class="btn btn-icon btn-sm btn-light border-0 d-none"
+                                    id="btnClearSearch" title="Hapus">
+                                    <i class="bi bi-x fs-6 text-muted"></i>
+                                </button>
+                            </div>
+
+                            {{-- Filter Jenis --}}
+                            <select id="filterJenis" class="form-select form-select-solid w-150px">
+                                <option value="">Semua Jenis</option>
+                                <option value="wajib" {{ request('filter_jenis') === 'wajib' ? 'selected' : '' }}>Wajib
+                                </option>
+                                <option value="pilihan" {{ request('filter_jenis') === 'pilihan' ? 'selected' : '' }}>
+                                    Pilihan</option>
+                                <option value="umum" {{ request('filter_jenis') === 'umum' ? 'selected' : '' }}>Umum
+                                </option>
+                            </select>
+
+                            {{-- Filter Orphan --}}
+                            <label class="d-flex align-items-center gap-2 cursor-pointer ms-2">
+                                <input type="checkbox" class="form-check-input form-check-input-sm" id="filterOrphan"
+                                    {{ request('filter_orphan') === '1' ? 'checked' : '' }}>
+                                <span class="text-muted fs-7 fw-semibold">Tampilkan yang belum mapping</span>
+                                @if ($totalOrphan > 0)
+                                    <span class="badge badge-circle badge-danger fs-9"
+                                        style="width:18px;height:18px;">{{ $totalOrphan }}</span>
+                                @endif
+                            </label>
+
+                            <div class="ms-auto">
+                                <button type="button" class="btn btn-primary" data-bs-toggle="modal"
+                                    data-bs-target="#modalTambahMatkul">
+                                    <i class="bi bi-plus-circle me-2"></i>Tambah MK
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- Filter aktif badge --}}
+                        <div id="activeFilters"
+                            class="d-flex gap-2 flex-wrap {{ request('search') || request('filter_jenis') || request('filter_orphan') ? '' : 'd-none' }}">
+                            @if (request('search'))
+                                <span class="badge badge-light-primary fs-8">
+                                    <i class="bi bi-search me-1"></i>"{{ request('search') }}"
+                                </span>
+                            @endif
+                            @if (request('filter_jenis'))
+                                <span class="badge badge-light-info fs-8">
+                                    Jenis: {{ ucfirst(request('filter_jenis')) }}
+                                </span>
+                            @endif
+                            @if (request('filter_orphan'))
+                                <span class="badge badge-light-danger fs-8">
+                                    <i class="bi bi-exclamation-triangle me-1"></i>Belum Mapping
+                                </span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body pt-3">
+                    <div id="tableWrapper">
+                        @include('matakuliah.partials.all-data-table', [
+                            'matakuliah' => $matakuliah,
+                            'prodi' => $prodi,
+                            'dosen' => $dosen,
+                        ])
+                    </div>
+                </div>
+            </div>
+
+            {{-- Modal Tambah --}}
+            @include('matakuliah.create-matkul', ['prodi' => $prodi, 'dosen' => $dosen])
+
+            {{-- Modal Detail & Delete per MK --}}
+            @foreach ($matakuliah as $m)
+                @include('matakuliah.detail-matkul', ['m' => $m])
+                @include('matakuliah.delete-matkul', ['m' => $m])
+            @endforeach
+
+            {{-- Modal Edit Global --}}
+            @include('matakuliah.edit-matkul', ['prodi' => $prodi, 'dosen' => $dosen])
+
         </div>
     </div>
-</div>
-
 @endsection
 
 @push('scripts')
 <script>
-function confirmDelete(id, nama) {
-    document.getElementById('deleteMatkulName').textContent = nama;
-    document.getElementById('formHapus').action = `/matakuliah/${id}`;
-    new bootstrap.Modal(document.getElementById('modalHapus')).show();
-}
+(function waitForjQuery() {
+    if (typeof jQuery === 'undefined') { setTimeout(waitForjQuery, 50); return; }
 
-function editMatkul(mk, mappings) {
-    // Redirect ke halaman edit atau buka modal edit
-    // Sesuaikan dengan implementasi modal edit yang ada
-    console.log('Edit:', mk, mappings);
-    // Contoh: window.location.href = `/matakuliah/${mk.id}/edit`;
-}
+    jQuery(function($) {
+        'use strict';
+
+        var searchTimer = null;
+        var $search   = $('#liveSearch');
+        var $jenis    = $('#filterJenis');
+        var $orphan   = $('#filterOrphan');
+        var $wrapper  = $('#tableWrapper');
+        var $icon     = $('#searchIcon');
+        var $spinner  = $('#searchSpinner');
+        var $clearBtn = $('#btnClearSearch');
+
+        if ($search.val()) $clearBtn.removeClass('d-none');
+
+        $search.on('keyup input', function() {
+            $clearBtn.toggleClass('d-none', $(this).val().length === 0);
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(doSearch, 350);
+        });
+
+        $clearBtn.on('click', function() {
+            $search.val('').focus();
+            $clearBtn.addClass('d-none');
+            doSearch();
+        });
+
+        $jenis.on('change', function() { doSearch(); });
+        $orphan.on('change', function() { doSearch(); });
+
+        function doSearch() {
+            var params = {
+                search:        $search.val().trim(),
+                filter_jenis:  $jenis.val(),
+                filter_orphan: $orphan.is(':checked') ? '1' : '',
+                ajax:          '1',   // ← flag tambahan agar controller deteksi AJAX
+            };
+
+            // Update URL tanpa reload
+            var queryStr = $.param(params);
+            window.history.replaceState(null, '', '{{ route('matakuliah.all-data') }}?' + queryStr);
+
+            // Loading
+            $icon.addClass('d-none');
+            $spinner.removeClass('d-none');
+            $wrapper.css({ 'opacity': '0.5', 'pointer-events': 'none' });
+
+            $.ajax({
+                url: '{{ route('matakuliah.all-data') }}',
+                method: 'GET',
+                data: params,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+                success: function(res) {
+                    if (res.html) {
+                        $wrapper.html(res.html);
+                    }
+                },
+                error: function(xhr) {
+                    console.error('[LiveSearch] Error:', xhr.status, xhr.responseText);
+                    // Fallback: reload halaman dengan filter
+                    window.location.href = '{{ route('matakuliah.all-data') }}?' + queryStr;
+                },
+                complete: function() {
+                    $icon.removeClass('d-none');
+                    $spinner.addClass('d-none');
+                    $wrapper.css({ 'opacity': '1', 'pointer-events': '' });
+                }
+            });
+        }
+    });
+})();
 </script>
 @endpush
