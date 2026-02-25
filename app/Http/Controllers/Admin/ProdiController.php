@@ -82,9 +82,34 @@ class ProdiController extends Controller
     public function destroy($id)
     {
         $prodi = Prodi::findOrFail($id);
-        $prodi->delete();
 
-        return redirect()->route('data-prodi.index')
-            ->with(['alert_type' => 'danger', 'message' => 'Data berhasil dihapus.']);
+        // 1. Cek relasi ke Rombel (Ini yang menyebabkan error tadi)
+        // Jika modelnya bukan \App\Models\Rombel, sesuaikan namespace-nya
+        $hasRombel = \App\Models\Rombel::where('id_prodi', $id)->exists();
+
+        // 2. Cek juga relasi ke Mahasiswa (jika ada)
+        $hasMahasiswa = \App\Models\Mahasiswa::where('id_prodi', $id)->exists();
+
+        // 3. Cek juga relasi ke Kurikulum/Matkul Mapping
+        $hasMatkul = \App\Models\MatkulProdiSemester::where('id_prodi', $id)->exists();
+
+        // Jika ada salah satu data terkait, batalkan penghapusan
+        if ($hasRombel || $hasMahasiswa || $hasMatkul) {
+            return redirect()->back()->with([
+                'alert_type' => 'warning',
+                'message' => 'Gagal menghapus! Prodi "' . $prodi->nama_prodi . '" masih digunakan pada data Rombel, Mahasiswa, atau Kurikulum.'
+            ]);
+        }
+
+        try {
+            $prodi->delete();
+            return redirect()->route('data-prodi.index')
+                ->with(['alert_type' => 'danger', 'message' => 'Data prodi berhasil dihapus.']);
+        } catch (\Exception $e) {
+            return redirect()->back()->with([
+                'alert_type' => 'danger',
+                'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()
+            ]);
+        }
     }
 }

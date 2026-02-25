@@ -37,11 +37,9 @@
             <div class="card">
                 <div class="card-header border-0 pt-6">
                     <div class="d-flex flex-wrap justify-content-between align-items-center w-100">
-                        {{-- Search DataTables dipindah ke sini via JS --}}
                         <div id="custom-search-container" class="mb-2 mb-md-0"></div>
 
                         <div class="d-flex flex-wrap align-items-center gap-3">
-                            {{-- Filter Jenis --}}
                             <select id="filterJenis" class="form-select form-select-sm w-auto">
                                 <option value="">Semua Jenis</option>
                                 <option value="Wajib">Wajib</option>
@@ -196,12 +194,6 @@
                                             @endcan
                                         </td>
                                     </tr>
-
-                                    {{-- Modal Detail --}}
-                                    @include('matakuliah.partials.detail-matkul', ['m' => $mk])
-
-                                    {{-- Modal Delete --}}
-                                    @include('matakuliah.partials.delete-matkul', ['m' => $mk])
                                 @endforeach
                             </tbody>
                         </table>
@@ -212,20 +204,28 @@
         </div>
     </div>
 
+    {{--
+        ╔══════════════════════════════════════════════════════╗
+        ║  MODALS — Harus di LUAR table agar tidak merusak    ║
+        ║  struktur HTML tabel (modals di dalam tbody akan     ║
+        ║  dirender browser sebagai tabel row ekstra)          ║
+        ╚══════════════════════════════════════════════════════╝
+    --}}
+    @foreach ($matakuliah as $mk)
+        @include('matakuliah.partials.detail-matkul', ['m' => $mk])
+        @include('matakuliah.partials.delete-matkul', ['m' => $mk])
+    @endforeach
+
     {{-- Modal Tambah --}}
     @include('matakuliah.partials.create-matkul', ['dosen' => $dosen, 'prodi' => $prodi])
 
-    {{-- Modal Edit Global (satu modal untuk semua baris) --}}
+    {{-- Modal Edit Global --}}
     @include('matakuliah.partials.edit-matkul', ['dosen' => $dosen, 'prodi' => $prodi])
 @endsection
 
 @push('scripts')
     <script>
         $(document).ready(function() {
-
-            // ================================================================
-            // DATATABLES — mirip halaman user, search pindah ke #custom-search-container
-            // ================================================================
             var table = $('#tabel-matkul').DataTable({
                 language: {
                     search: '',
@@ -243,23 +243,22 @@
                         previous: 'Sebelumnya',
                     },
                 },
-                dom: 'lrtip', // Kita buat search sendiri, hapus 'f' dari dom
+                dom: 'lrtip',
                 pageLength: 20,
                 lengthMenu: [10, 20, 50, 100],
                 order: [
                     [1, 'asc']
-                ], // Default sort by kode MK
+                ],
                 columnDefs: [{
                         orderable: false,
                         targets: [6, 7]
-                    }, // kolom mapping & aksi tidak sortable
+                    },
                     {
                         searchable: false,
                         targets: [0, 3, 4, 6, 7]
-                    }, // no, sks, jenis, mapping, aksi
+                    },
                 ],
                 initComplete: function() {
-                    // Pindahkan search box ke #custom-search-container
                     var $filter = $(this.api().table().container()).find('.dataTables_filter');
                     $filter.find('input')
                         .addClass('form-control form-control-sm w-250px')
@@ -269,13 +268,9 @@
                 }
             });
 
-            // ================================================================
-            // FILTER JENIS — search di kolom index 4 (Jenis)
-            // ================================================================
             $('#filterJenis').on('change', function() {
                 table.column(4).search($(this).val()).draw();
             });
-
         });
     </script>
 @endpush
