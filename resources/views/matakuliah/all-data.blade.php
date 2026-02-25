@@ -3,18 +3,24 @@
 @section('toolbar')
     <div class="toolbar" id="kt_toolbar">
         <div id="kt_toolbar_container" class="container-fluid d-flex flex-stack">
-            <div data-kt-swapper="true" data-kt-swapper-mode="prepend"
-                data-kt-swapper-parent="{default: '#kt_content_container', 'lg': '#kt_toolbar_container'}"
-                class="page-title d-flex align-items-center flex-wrap me-3 mb-5 mb-lg-0">
+            <div class="page-title d-flex align-items-center flex-wrap me-3 mb-5 mb-lg-0">
                 <h1 class="d-flex align-items-center text-dark fw-bolder fs-3 my-1">Master Data Mata Kuliah</h1>
                 <span class="h-20px border-gray-200 border-start mx-4"></span>
+            </div>
+            <div class="d-flex align-items-center py-1">
                 <ul class="breadcrumb breadcrumb-separatorless fw-bold fs-7 my-1">
-                    <li class="breadcrumb-item text-muted">Dashboard</li>
-                    <li class="breadcrumb-item"><span class="bullet bg-gray-200 w-5px h-2px"></span></li>
+                    <li class="breadcrumb-item text-muted">
+                        <a href="/dashboard" class="text-muted text-hover-primary">Dashboard</a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <span class="bullet bg-gray-200 w-5px h-2px"></span>
+                    </li>
                     <li class="breadcrumb-item text-muted">
                         <a href="{{ route('matakuliah.index') }}" class="text-muted text-hover-primary">Mata Kuliah</a>
                     </li>
-                    <li class="breadcrumb-item"><span class="bullet bg-gray-200 w-5px h-2px"></span></li>
+                    <li class="breadcrumb-item">
+                        <span class="bullet bg-gray-200 w-5px h-2px"></span>
+                    </li>
                     <li class="breadcrumb-item text-dark">Master Data</li>
                 </ul>
             </div>
@@ -28,246 +34,248 @@
 
             @include('master.notification')
 
-            {{-- ===== HEADER STATS ===== --}}
-            <div class="row g-5 mb-6">
-                <div class="col-sm-6 col-xl-3">
-                    <div class="card card-flush h-lg-100">
-                        <div class="card-body d-flex align-items-center gap-4 py-4">
-                            <div class="symbol symbol-50px symbol-circle bg-light-primary flex-shrink-0">
-                                <span class="symbol-label"><i class="bi bi-book-fill text-primary fs-3"></i></span>
-                            </div>
-                            <div>
-                                <div class="text-muted fs-8 fw-semibold text-uppercase ls-1 mb-1">Total MK</div>
-                                <div class="fs-2 fw-bolder text-dark">{{ $matakuliah->total() }}</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-sm-6 col-xl-3">
-                    <div class="card card-flush h-lg-100">
-                        <div class="card-body d-flex align-items-center gap-4 py-4">
-                            <div class="symbol symbol-50px symbol-circle bg-light-danger flex-shrink-0">
-                                <span class="symbol-label"><i
-                                        class="bi bi-exclamation-triangle-fill text-danger fs-3"></i></span>
-                            </div>
-                            <div>
-                                <div class="text-muted fs-8 fw-semibold text-uppercase ls-1 mb-1">Tanpa Mapping</div>
-                                <div class="fs-2 fw-bolder text-dark">{{ $totalOrphan }}</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-sm-6 col-xl-3">
-                    <div class="card card-flush h-lg-100">
-                        <div class="card-body d-flex align-items-center gap-4 py-4">
-                            <div class="symbol symbol-50px symbol-circle bg-light-success flex-shrink-0">
-                                <span class="symbol-label"><i class="bi bi-diagram-3-fill text-success fs-3"></i></span>
-                            </div>
-                            <div>
-                                <div class="text-muted fs-8 fw-semibold text-uppercase ls-1 mb-1">Total Prodi</div>
-                                <div class="fs-2 fw-bolder text-dark">{{ $prodi->count() }}</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-sm-6 col-xl-3">
-                    <div class="card card-flush h-lg-100">
-                        <div class="card-body d-flex align-items-center justify-content-between py-4">
-                            <div class="d-flex align-items-center gap-4">
-                                <div class="symbol symbol-50px symbol-circle bg-light-info flex-shrink-0">
-                                    <span class="symbol-label"><i class="bi bi-grid-3x3-gap-fill text-info fs-3"></i></span>
-                                </div>
-                                <div>
-                                    <div class="text-muted fs-8 fw-semibold text-uppercase ls-1 mb-1">Kurikulum</div>
-                                    <div class="fs-7 fw-bold text-dark">Per Prodi</div>
-                                </div>
-                            </div>
-                            <a href="{{ route('matakuliah.index') }}" class="btn btn-sm btn-light-info">
-                                <i class="bi bi-arrow-right fs-7"></i>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- ===== MAIN CARD ===== --}}
             <div class="card">
                 <div class="card-header border-0 pt-6">
-                    <div class="card-title flex-column gap-2 w-100">
-                        <div class="d-flex align-items-center gap-3 w-100">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center w-100">
+                        {{-- Search DataTables dipindah ke sini via JS --}}
+                        <div id="custom-search-container" class="mb-2 mb-md-0"></div>
 
-                            {{-- Live Search --}}
-                            <div class="input-group input-group-solid w-300px">
-                                <span class="input-group-text border-0 bg-light ps-4">
-                                    <i class="bi bi-search text-muted fs-6" id="searchIcon"></i>
-                                    <span class="spinner-border spinner-border-sm text-muted d-none" id="searchSpinner"
-                                        style="width:14px;height:14px;border-width:2px;"></span>
-                                </span>
-                                <input type="text" id="liveSearch" class="form-control form-control-solid border-0 ps-2"
-                                    placeholder="Cari kode atau nama MK..." value="{{ request('search') }}"
-                                    autocomplete="off">
-                                <button type="button" class="btn btn-icon btn-sm btn-light border-0 d-none"
-                                    id="btnClearSearch" title="Hapus">
-                                    <i class="bi bi-x fs-6 text-muted"></i>
-                                </button>
-                            </div>
-
+                        <div class="d-flex flex-wrap align-items-center gap-3">
                             {{-- Filter Jenis --}}
-                            <select id="filterJenis" class="form-select form-select-solid w-150px">
+                            <select id="filterJenis" class="form-select form-select-sm w-auto">
                                 <option value="">Semua Jenis</option>
-                                <option value="wajib" {{ request('filter_jenis') === 'wajib' ? 'selected' : '' }}>Wajib
-                                </option>
-                                <option value="pilihan" {{ request('filter_jenis') === 'pilihan' ? 'selected' : '' }}>
-                                    Pilihan</option>
-                                <option value="umum" {{ request('filter_jenis') === 'umum' ? 'selected' : '' }}>Umum
-                                </option>
+                                <option value="Wajib">Wajib</option>
+                                <option value="Pilihan">Pilihan</option>
+                                <option value="MKU">Umum (MKU)</option>
                             </select>
 
-                            {{-- Filter Orphan --}}
-                            <label class="d-flex align-items-center gap-2 cursor-pointer ms-2">
-                                <input type="checkbox" class="form-check-input form-check-input-sm" id="filterOrphan"
-                                    {{ request('filter_orphan') === '1' ? 'checked' : '' }}>
-                                <span class="text-muted fs-7 fw-semibold">Tampilkan yang belum mapping</span>
-                                @if ($totalOrphan > 0)
-                                    <span class="badge badge-circle badge-danger fs-9"
-                                        style="width:18px;height:18px;">{{ $totalOrphan }}</span>
-                                @endif
-                            </label>
+                            <a href="{{ route('matakuliah.index') }}" class="btn btn-sm btn-light-info">
+                                <i class="bi bi-diagram-3 me-1"></i>Lihat Kurikulum
+                            </a>
 
-                            <div class="ms-auto">
-                                <button type="button" class="btn btn-primary" data-bs-toggle="modal"
+                            @can('kurikulum-create')
+                                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal"
                                     data-bs-target="#modalTambahMatkul">
-                                    <i class="bi bi-plus-circle me-2"></i>Tambah MK
+                                    <i class="bi bi-plus-lg me-1"></i>Tambah MK
                                 </button>
-                            </div>
-                        </div>
-
-                        {{-- Filter aktif badge --}}
-                        <div id="activeFilters"
-                            class="d-flex gap-2 flex-wrap {{ request('search') || request('filter_jenis') || request('filter_orphan') ? '' : 'd-none' }}">
-                            @if (request('search'))
-                                <span class="badge badge-light-primary fs-8">
-                                    <i class="bi bi-search me-1"></i>"{{ request('search') }}"
-                                </span>
-                            @endif
-                            @if (request('filter_jenis'))
-                                <span class="badge badge-light-info fs-8">
-                                    Jenis: {{ ucfirst(request('filter_jenis')) }}
-                                </span>
-                            @endif
-                            @if (request('filter_orphan'))
-                                <span class="badge badge-light-danger fs-8">
-                                    <i class="bi bi-exclamation-triangle me-1"></i>Belum Mapping
-                                </span>
-                            @endif
+                            @endcan
                         </div>
                     </div>
                 </div>
 
-                <div class="card-body pt-3">
-                    <div id="tableWrapper">
-                        @include('matakuliah.partials.all-data-table', [
-                            'matakuliah' => $matakuliah,
-                            'prodi' => $prodi,
-                            'dosen' => $dosen,
-                        ])
+                <div class="card-body pt-0">
+                    <div class="table-responsive">
+                        <table id="tabel-matkul"
+                            class="table table-bordered table-striped table-sm align-middle fs-6 gy-2 w-100">
+                            <thead class="bg-gray-100 text-gray-800 border-bottom border-gray-300">
+                                <tr class="fw-bold fs-6 text-uppercase">
+                                    <th class="text-center py-4 px-2 min-w-30px">No</th>
+                                    <th class="py-4 px-3 min-w-100px">Kode MK</th>
+                                    <th class="py-4 px-3 min-w-200px">Nama Mata Kuliah</th>
+                                    <th class="text-center py-4 px-2 min-w-60px">SKS</th>
+                                    <th class="text-center py-4 px-2 min-w-80px">Jenis</th>
+                                    <th class="py-4 px-3 min-w-150px">Dosen Pengampu</th>
+                                    <th class="py-4 px-3 min-w-180px">Mapping Prodi / Semester</th>
+                                    <th class="text-center py-4 px-2 min-w-100px">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-gray-700 fw-semibold">
+                                @foreach ($matakuliah as $i => $mk)
+                                    <tr>
+                                        {{-- No --}}
+                                        <td class="text-center">{{ $i + 1 }}</td>
+
+                                        {{-- Kode MK --}}
+                                        <td>
+                                            <span class="badge badge-light fw-bold text-dark font-monospace px-2"
+                                                data-cell="kode">{{ $mk->kode_mk }}</span>
+                                        </td>
+
+                                        {{-- Nama MK --}}
+                                        <td>
+                                            <span class="fw-semibold text-gray-800"
+                                                data-cell="nama">{{ $mk->nama_mk }}</span>
+                                            @if ($mk->prodiMappings->isEmpty())
+                                                <br><span class="badge badge-light-danger fs-9 mt-1">Belum dipetakan</span>
+                                            @endif
+                                        </td>
+
+                                        {{-- SKS --}}
+                                        <td class="text-center">
+                                            <span class="fw-bolder text-primary" data-cell="sks">{{ $mk->bobot }}</span>
+                                            <span class="text-muted fs-9"> sks</span>
+                                        </td>
+
+                                        {{-- Jenis --}}
+                                        <td class="text-center">
+                                            @php
+                                                $jenisColor = match ($mk->jenis) {
+                                                    'wajib' => 'primary',
+                                                    'pilihan' => 'warning',
+                                                    'umum' => 'info',
+                                                    default => 'secondary',
+                                                };
+                                                $jenisLabel = $mk->jenis === 'umum' ? 'MKU' : ucfirst($mk->jenis);
+                                            @endphp
+                                            <span class="badge badge-light-{{ $jenisColor }} fw-semibold"
+                                                data-cell="jenis">{{ $jenisLabel }}</span>
+                                        </td>
+
+                                        {{-- Dosen --}}
+                                        <td>
+                                            @if ($mk->dosen && $mk->dosen->user)
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div class="symbol symbol-30px flex-shrink-0">
+                                                        <span
+                                                            class="symbol-label bg-light-success fw-bold text-success fs-8">
+                                                            {{ strtoupper(substr($mk->dosen->user->nama, 0, 1)) }}
+                                                        </span>
+                                                    </div>
+                                                    <span class="text-truncate fw-semibold" style="max-width:130px"
+                                                        data-cell="dosen">{{ $mk->dosen->user->nama }}</span>
+                                                </div>
+                                            @else
+                                                <span class="text-muted">—</span>
+                                            @endif
+                                        </td>
+
+                                        {{-- Mapping --}}
+                                        <td>
+                                            @if ($mk->prodiMappings->isNotEmpty())
+                                                @foreach ($mk->prodiMappings->sortBy('semester')->take(2) as $mp)
+                                                    <div class="d-flex align-items-center gap-1 mb-1">
+                                                        <i class="bi bi-dot text-primary fs-5"></i>
+                                                        <span class="text-truncate fs-8" style="max-width:120px"
+                                                            title="{{ $mp->prodi->nama_prodi ?? '-' }}">
+                                                            {{ Str::limit($mp->prodi->nama_prodi ?? '-', 20) }}
+                                                        </span>
+                                                        <span class="badge badge-light-primary fs-9 flex-shrink-0">
+                                                            Sem.{{ $mp->semester }}
+                                                        </span>
+                                                    </div>
+                                                @endforeach
+                                                @if ($mk->prodiMappings->count() > 2)
+                                                    <span class="text-muted fs-9">+{{ $mk->prodiMappings->count() - 2 }}
+                                                        lainnya</span>
+                                                @endif
+                                            @else
+                                                <span class="text-muted">—</span>
+                                            @endif
+                                        </td>
+
+                                        {{-- AKSI --}}
+                                        <td class="text-center">
+                                            {{-- DETAIL --}}
+                                            <button type="button" class="btn btn-icon btn-sm btn-light-primary me-1"
+                                                title="Detail" data-bs-toggle="modal"
+                                                data-bs-target="#modalDetailMatkul{{ $mk->id }}">
+                                                <i class="bi bi-eye-fill fs-5"></i>
+                                            </button>
+
+                                            {{-- EDIT --}}
+                                            @can('kurikulum-update')
+                                                <button type="button"
+                                                    class="btn btn-icon btn-sm btn-light-success me-1 btn-open-edit-matkul"
+                                                    title="Ubah" data-id="{{ $mk->id }}"
+                                                    data-url="{{ route('matakuliah.update', $mk->id) }}"
+                                                    data-kode="{{ $mk->kode_mk }}" data-nama="{{ $mk->nama_mk }}"
+                                                    data-bobot="{{ $mk->bobot }}" data-jenis="{{ $mk->jenis }}"
+                                                    data-id-dosen="{{ $mk->id_dosen }}"
+                                                    data-mappings="{{ json_encode($mk->prodiMappings->map(fn($mp) => ['prodi_id' => $mp->id_prodi, 'semester' => $mp->semester])) }}">
+                                                    <i class="bi bi-pencil-fill fs-5"></i>
+                                                </button>
+                                            @endcan
+
+                                            {{-- HAPUS --}}
+                                            @can('kurikulum-delete')
+                                                <button type="button" class="btn btn-icon btn-sm btn-light-danger"
+                                                    title="Hapus" data-bs-toggle="modal"
+                                                    data-bs-target="#modalDeleteMatkul{{ $mk->id }}">
+                                                    <i class="bi bi-trash-fill fs-5"></i>
+                                                </button>
+                                            @endcan
+                                        </td>
+                                    </tr>
+
+                                    {{-- Modal Detail --}}
+                                    @include('matakuliah.partials.detail-matkul', ['m' => $mk])
+
+                                    {{-- Modal Delete --}}
+                                    @include('matakuliah.partials.delete-matkul', ['m' => $mk])
+                                @endforeach
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
-
-            {{-- Modal Tambah --}}
-            @include('matakuliah.create-matkul', ['prodi' => $prodi, 'dosen' => $dosen])
-
-            {{-- Modal Detail & Delete per MK --}}
-            @foreach ($matakuliah as $m)
-                @include('matakuliah.detail-matkul', ['m' => $m])
-                @include('matakuliah.delete-matkul', ['m' => $m])
-            @endforeach
-
-            {{-- Modal Edit Global --}}
-            @include('matakuliah.edit-matkul', ['prodi' => $prodi, 'dosen' => $dosen])
 
         </div>
     </div>
+
+    {{-- Modal Tambah --}}
+    @include('matakuliah.partials.create-matkul', ['dosen' => $dosen, 'prodi' => $prodi])
+
+    {{-- Modal Edit Global (satu modal untuk semua baris) --}}
+    @include('matakuliah.partials.edit-matkul', ['dosen' => $dosen, 'prodi' => $prodi])
 @endsection
 
 @push('scripts')
-<script>
-(function waitForjQuery() {
-    if (typeof jQuery === 'undefined') { setTimeout(waitForjQuery, 50); return; }
+    <script>
+        $(document).ready(function() {
 
-    jQuery(function($) {
-        'use strict';
-
-        var searchTimer = null;
-        var $search   = $('#liveSearch');
-        var $jenis    = $('#filterJenis');
-        var $orphan   = $('#filterOrphan');
-        var $wrapper  = $('#tableWrapper');
-        var $icon     = $('#searchIcon');
-        var $spinner  = $('#searchSpinner');
-        var $clearBtn = $('#btnClearSearch');
-
-        if ($search.val()) $clearBtn.removeClass('d-none');
-
-        $search.on('keyup input', function() {
-            $clearBtn.toggleClass('d-none', $(this).val().length === 0);
-            clearTimeout(searchTimer);
-            searchTimer = setTimeout(doSearch, 350);
-        });
-
-        $clearBtn.on('click', function() {
-            $search.val('').focus();
-            $clearBtn.addClass('d-none');
-            doSearch();
-        });
-
-        $jenis.on('change', function() { doSearch(); });
-        $orphan.on('change', function() { doSearch(); });
-
-        function doSearch() {
-            var params = {
-                search:        $search.val().trim(),
-                filter_jenis:  $jenis.val(),
-                filter_orphan: $orphan.is(':checked') ? '1' : '',
-                ajax:          '1',   // ← flag tambahan agar controller deteksi AJAX
-            };
-
-            // Update URL tanpa reload
-            var queryStr = $.param(params);
-            window.history.replaceState(null, '', '{{ route('matakuliah.all-data') }}?' + queryStr);
-
-            // Loading
-            $icon.addClass('d-none');
-            $spinner.removeClass('d-none');
-            $wrapper.css({ 'opacity': '0.5', 'pointer-events': 'none' });
-
-            $.ajax({
-                url: '{{ route('matakuliah.all-data') }}',
-                method: 'GET',
-                data: params,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json',
+            // ================================================================
+            // DATATABLES — mirip halaman user, search pindah ke #custom-search-container
+            // ================================================================
+            var table = $('#tabel-matkul').DataTable({
+                language: {
+                    search: '',
+                    searchPlaceholder: 'Cari kode / nama MK...',
+                    lengthMenu: 'Tampilkan _MENU_ data',
+                    info: 'Menampilkan _START_–_END_ dari _TOTAL_ data',
+                    infoEmpty: 'Tidak ada data',
+                    infoFiltered: '(difilter dari _MAX_ total data)',
+                    zeroRecords: 'Data tidak ditemukan',
+                    emptyTable: 'Belum ada mata kuliah',
+                    paginate: {
+                        first: 'Pertama',
+                        last: 'Terakhir',
+                        next: 'Selanjutnya',
+                        previous: 'Sebelumnya',
+                    },
                 },
-                success: function(res) {
-                    if (res.html) {
-                        $wrapper.html(res.html);
-                    }
-                },
-                error: function(xhr) {
-                    console.error('[LiveSearch] Error:', xhr.status, xhr.responseText);
-                    // Fallback: reload halaman dengan filter
-                    window.location.href = '{{ route('matakuliah.all-data') }}?' + queryStr;
-                },
-                complete: function() {
-                    $icon.removeClass('d-none');
-                    $spinner.addClass('d-none');
-                    $wrapper.css({ 'opacity': '1', 'pointer-events': '' });
+                dom: 'lrtip', // Kita buat search sendiri, hapus 'f' dari dom
+                pageLength: 20,
+                lengthMenu: [10, 20, 50, 100],
+                order: [
+                    [1, 'asc']
+                ], // Default sort by kode MK
+                columnDefs: [{
+                        orderable: false,
+                        targets: [6, 7]
+                    }, // kolom mapping & aksi tidak sortable
+                    {
+                        searchable: false,
+                        targets: [0, 3, 4, 6, 7]
+                    }, // no, sks, jenis, mapping, aksi
+                ],
+                initComplete: function() {
+                    // Pindahkan search box ke #custom-search-container
+                    var $filter = $(this.api().table().container()).find('.dataTables_filter');
+                    $filter.find('input')
+                        .addClass('form-control form-control-sm w-250px')
+                        .attr('placeholder', 'Cari kode / nama MK...');
+                    $filter.find('label').addClass('d-flex align-items-center gap-2 mb-0');
+                    $filter.appendTo('#custom-search-container');
                 }
             });
-        }
-    });
-})();
-</script>
+
+            // ================================================================
+            // FILTER JENIS — search di kolom index 4 (Jenis)
+            // ================================================================
+            $('#filterJenis').on('change', function() {
+                table.column(4).search($(this).val()).draw();
+            });
+
+        });
+    </script>
 @endpush

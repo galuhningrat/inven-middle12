@@ -32,7 +32,7 @@ use Carbon\Carbon;
  */
 class JadwalKuliahSeeder extends Seeder
 {
-    const TABLE_JADWAL = 'jadwal_kuliah';
+    const TABLE_JADWAL = 'jadwal';
     const TA           = '2025/2026';
 
     // ── Helper: cari id_dosen berdasarkan kata kunci nama (LIKE) ──────────
@@ -55,7 +55,7 @@ class JadwalKuliahSeeder extends Seeder
     // ── Helper: cari id_matkul berdasarkan kata kunci nama_mk (LIKE) ─────
     private function findMatkulId(string $keyword): ?int
     {
-        $result = DB::table('matakuliah')
+        $result = DB::table('matkul')
             ->where('nama_mk', 'LIKE', "%{$keyword}%")
             ->select('id')
             ->first();
