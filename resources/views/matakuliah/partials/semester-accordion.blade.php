@@ -1,206 +1,165 @@
 {{--
-    ┌─────────────────────────────────────────────────────────────────────┐
-    │  PARTIAL: matakuliah/partials/semester-accordion.blade.php          │
-    │                                                                     │
-    │  Render accordion Semester (Level 4) beserta tabel MK (Level 5).   │
-    │                                                                     │
-    │  Variabel yang diterima dari parent (via @include):                 │
-    │    $bySemester   : collect() — key=semester, value=[...mappings]   │
-    │    $accordionId  : string   — unique ID untuk accordion ini        │
-    │    $allRenderedMks : Collection — referensi untuk dedup modal      │
-    └─────────────────────────────────────────────────────────────────────┘
+    Partial: matakuliah/partials/semester-accordion.blade.php
+
+    Variabel WAJIB dari parent:
+      - $rombel  (model Rombel, harus punya kolom id_prodi)
+
+    Self-contained — $semester TIDAK perlu dikirim dari luar.
+    Data semester di-query dari pivot matkul_prodi_semester.
 --}}
 
-<div class="accordion accordion-icon-collapse" id="{{ $accordionId }}">
-    @foreach ($bySemester as $semester => $mappings)
-        @php
-            $semPaneId = $accordionId . '-sem-' . $semester;
-            $totalSks = collect($mappings)->sum(fn($mp) => $mp->matkul?->bobot ?? 0);
-            $totalMk = count($mappings);
+@php
+    use App\Models\MatkulProdiSemester;
 
-            // Categorize MK by jenis untuk tampilan badge summary
-            $jumlahWajib = collect($mappings)->filter(fn($mp) => $mp->matkul?->jenis === 'wajib')->count();
-            $jumlahUmum = collect($mappings)->filter(fn($mp) => $mp->matkul?->jenis === 'umum')->count();
-            $jumlahPilihan = collect($mappings)->filter(fn($mp) => $mp->matkul?->jenis === 'pilihan')->count();
-        @endphp
+    $mappingsBySemester = MatkulProdiSemester::with(['matkul.dosen.user', 'matkul.prodiMappings'])
+        ->where('id_prodi', $rombel->id_prodi)
+        ->orderBy('semester')
+        ->orderBy('id_matkul')
+        ->get()
+        ->groupBy('semester');
+@endphp
 
-        <div class="accordion-item mb-2 border rounded-2">
+@if ($mappingsBySemester->isEmpty())
+    <div class="text-center text-muted py-8">
+        <i class="bi bi-inbox fs-2x d-block mb-2 text-gray-300"></i>
+        <div class="fs-7">Belum ada mata kuliah yang dipetakan ke prodi ini.</div>
+    </div>
+@else
+    @foreach ($mappingsBySemester as $semester => $mappings)
+        <div class="mb-3">
+            {{-- Header Semester --}}
+            <div class="d-flex align-items-center justify-content-between py-3 px-4
+                        bg-light-primary rounded cursor-pointer"
+                data-bs-toggle="collapse" data-bs-target="#semCollapse-{{ $rombel->id }}-{{ $semester }}"
+                aria-expanded="true">
 
-            {{-- ── HEADER SEMESTER ────────────────────────────────────────────── --}}
-            <h2 class="accordion-header" id="hd-{{ $semPaneId }}">
-                <button
-                    class="accordion-button {{ !$loop->first ? 'collapsed' : '' }} fw-semibold fs-7 py-3 px-4 bg-light rounded-2"
-                    type="button" data-bs-toggle="collapse" data-bs-target="#{{ $semPaneId }}"
-                    aria-expanded="{{ $loop->first ? 'true' : 'false' }}">
+                <div class="d-flex align-items-center gap-3">
+                    <span class="w-8px h-8px rounded-circle bg-primary d-inline-block"></span>
+                    <h6 class="fw-bold text-gray-800 mb-0">Semester {{ $semester }}</h6>
+                </div>
 
-                    <div class="d-flex align-items-center w-100 me-3 gap-3">
-                        {{-- Icon Semester --}}
-                        <div class="d-flex flex-center w-32px h-32px rounded bg-info flex-shrink-0">
-                            <span class="text-white fw-bolder fs-8">{{ $semester }}</span>
-                        </div>
+                @php
+                    $totalSks = $mappings->sum(fn($m) => $m->matkul?->bobot ?? 0);
+                    $totalWajib = $mappings->filter(fn($m) => $m->matkul?->jenis === 'wajib')->count();
+                @endphp
 
-                        {{-- Label --}}
-                        <div class="flex-grow-1">
-                            <span class="fw-bold text-gray-700">Semester {{ $semester }}</span>
-                        </div>
+                <div class="d-flex align-items-center gap-3 text-muted fs-8">
+                    <span>
+                        <i class="bi bi-book me-1 text-primary"></i>
+                        <strong class="text-gray-800">{{ $mappings->count() }}</strong> MK
+                    </span>
+                    <span>
+                        <i class="bi bi-award me-1 text-success"></i>
+                        <strong class="text-success">{{ $totalSks }}</strong> SKS
+                    </span>
+                    <span class="badge badge-light-warning fs-9">{{ $totalWajib }} Wajib</span>
+                    <i class="bi bi-chevron-up text-primary fs-7 ms-2"></i>
+                </div>
+            </div>
 
-                        {{-- Badge Summary --}}
-                        <div class="d-flex gap-2 ms-auto flex-shrink-0">
-                            <span class="badge badge-light-dark fs-9">
-                                <i class="bi bi-book me-1"></i>{{ $totalMk }} MK
-                            </span>
-                            <span class="badge badge-light-info fs-9">
-                                {{ $totalSks }} SKS
-                            </span>
-                            @if ($jumlahWajib > 0)
-                                <span class="badge badge-light-primary fs-9">{{ $jumlahWajib }} Wajib</span>
-                            @endif
-                            @if ($jumlahUmum > 0)
-                                <span class="badge badge-light-success fs-9">{{ $jumlahUmum }} MKU</span>
-                            @endif
-                            @if ($jumlahPilihan > 0)
-                                <span class="badge badge-light-warning fs-9">{{ $jumlahPilihan }} Pilihan</span>
-                            @endif
-                        </div>
-                    </div>
-                </button>
-            </h2>
+            {{-- Tabel MK --}}
+            <div class="collapse show" id="semCollapse-{{ $rombel->id }}-{{ $semester }}">
+                <div class="table-responsive border border-top-0 rounded-bottom">
+                    <table class="table table-sm align-middle fs-7 mb-0 gy-1">
+                        <thead class="bg-gray-100 border-bottom">
+                            <tr class="fw-semibold text-uppercase text-muted fs-8">
+                                <th class="ps-5 py-3 min-w-30px text-center">#</th>
+                                <th class="py-3 min-w-100px">Kode MK</th>
+                                <th class="py-3 min-w-220px">Nama Mata Kuliah</th>
+                                <th class="text-center py-3 min-w-60px">SKS</th>
+                                <th class="text-center py-3 min-w-80px">Jenis</th>
+                                <th class="py-3 min-w-160px">Dosen Pengampu</th>
+                                <th class="text-center py-3 min-w-115px">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($mappings as $i => $mapping)
+                                @php $mk = $mapping->matkul; @endphp
+                                @if (!$mk)
+                                    @continue
+                                @endif
 
-            {{-- ── BODY SEMESTER — LEVEL 5: Tabel MK ────────────────────────── --}}
-            <div id="{{ $semPaneId }}" class="accordion-collapse collapse {{ $loop->first ? 'show' : '' }}"
-                data-bs-parent="#{{ $accordionId }}">
+                                <tr class="border-bottom border-gray-100">
+                                    <td class="ps-5 text-center text-muted">{{ $i + 1 }}</td>
 
-                <div class="accordion-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-row-dashed table-row-gray-200 align-middle gs-4 gy-2 mb-0">
-                            <thead>
-                                <tr class="fw-bold text-muted bg-light fs-8 text-uppercase">
-                                    <th class="ps-4" style="width:45px">#</th>
-                                    <th style="width:110px">Kode MK</th>
-                                    <th>Nama Mata Kuliah</th>
-                                    <th style="width:60px" class="text-center">SKS</th>
-                                    <th style="width:80px" class="text-center">Jenis</th>
-                                    <th>Dosen Pengampu</th>
-                                    <th style="width:110px" class="text-center pe-4">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse ($mappings as $i => $mp)
-                                    @php
-                                        $mk = $mp->matkul;
+                                    <td>
+                                        <span class="badge badge-light fw-bold text-dark font-monospace px-2">
+                                            {{ $mk->kode_mk }}
+                                        </span>
+                                    </td>
 
-                                        // Dedup modal — pastikan modal hanya dirender sekali per MK unik
-                                        if ($mk && !$allRenderedMks->contains('id', $mk->id)) {
-                                            $allRenderedMks->push($mk);
-                                        }
+                                    <td>
+                                        <span class="fw-semibold text-gray-800">{{ $mk->nama_mk }}</span>
+                                    </td>
 
-                                        $jenisBadge = match ($mk?->jenis) {
-                                            'wajib' => 'badge-light-primary',
-                                            'pilihan' => 'badge-light-warning',
-                                            'umum' => 'badge-light-success',
-                                            default => 'badge-light-dark',
-                                        };
-                                        $jenisLabel = match ($mk?->jenis) {
-                                            'wajib' => 'Wajib',
-                                            'pilihan' => 'Pilihan',
-                                            'umum' => 'MKU',
-                                            default => '-',
-                                        };
-                                    @endphp
-                                    <tr>
-                                        {{-- No --}}
-                                        <td class="ps-4 text-muted fs-8">{{ $i + 1 }}</td>
+                                    <td class="text-center">
+                                        <span class="fw-bolder text-primary">{{ $mk->bobot }}</span>
+                                        <span class="text-muted fs-9"> SKS</span>
+                                    </td>
 
-                                        {{-- Kode MK --}}
-                                        <td>
-                                            <span class="badge badge-light-dark fw-bold font-monospace fs-8">
-                                                {{ $mk?->kode_mk ?? '—' }}
-                                            </span>
-                                        </td>
+                                    <td class="text-center">
+                                        @php
+                                            $color = match ($mk->jenis) {
+                                                'wajib' => 'primary',
+                                                'pilihan' => 'warning',
+                                                'umum' => 'info',
+                                                default => 'secondary',
+                                            };
+                                        @endphp
+                                        <span class="badge badge-light-{{ $color }} fw-semibold">
+                                            {{ $mk->jenis === 'umum' ? 'MKU' : ucfirst($mk->jenis) }}
+                                        </span>
+                                    </td>
 
-                                        {{-- Nama MK --}}
-                                        <td class="fw-semibold text-gray-800 fs-7">
-                                            {{ $mk?->nama_mk ?? '(MK tidak ditemukan)' }}
-                                        </td>
-
-                                        {{-- SKS --}}
-                                        <td class="text-center">
-                                            <span class="badge badge-light-info fw-bold">
-                                                {{ $mk?->bobot ?? 0 }} SKS
-                                            </span>
-                                        </td>
-
-                                        {{-- Jenis --}}
-                                        <td class="text-center">
-                                            <span class="badge {{ $jenisBadge }} fs-8">
-                                                {{ $jenisLabel }}
-                                            </span>
-                                        </td>
-
-                                        {{-- Dosen --}}
-                                        <td class="fs-7 text-gray-600">
-                                            {{ $mk?->dosen?->user?->nama ?? '—' }}
-                                        </td>
-
-                                        {{-- Aksi --}}
-                                        <td class="text-center pe-4">
-                                            @if ($mk)
-                                                <div class="d-flex justify-content-center gap-1">
-                                                    @can('kurikulum-read')
-                                                        <button type="button" class="btn btn-icon btn-sm btn-light-primary"
-                                                            data-bs-toggle="modal"
-                                                            data-bs-target="#modalDetailMatkul{{ $mk->id }}"
-                                                            title="Detail">
-                                                            <i class="bi bi-eye-fill fs-5"></i>
-                                                        </button>
-                                                    @endcan
-                                                    @can('kurikulum-update')
-                                                        <button type="button"
-                                                            class="btn btn-icon btn-sm btn-light-success btn-open-edit-matkul"
-                                                            data-id="{{ $mk->id }}" title="Edit">
-                                                            <i class="bi bi-pencil-fill fs-5"></i>
-                                                        </button>
-                                                    @endcan
-                                                    @can('kurikulum-delete')
-                                                        <button type="button" class="btn btn-icon btn-sm btn-light-danger"
-                                                            data-bs-toggle="modal"
-                                                            data-bs-target="#modalHapusMatkul{{ $mk->id }}"
-                                                            title="Hapus">
-                                                            <i class="bi bi-trash-fill fs-5"></i>
-                                                        </button>
-                                                    @endcan
+                                    <td>
+                                        @if ($mk->dosen && $mk->dosen->user)
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="symbol symbol-25px flex-shrink-0">
+                                                    <span
+                                                        class="symbol-label bg-light-success fw-bold text-success fs-9">
+                                                        {{ strtoupper(substr($mk->dosen->user->nama, 0, 1)) }}
+                                                    </span>
                                                 </div>
-                                            @endif
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="7" class="text-center py-5 text-muted">
-                                            <i class="bi bi-inbox fs-2x text-gray-300 d-block mb-2"></i>
-                                            <span class="fs-7">Belum ada mata kuliah di semester ini.</span>
-                                        </td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                            @if (count($mappings) > 0)
-                                <tfoot>
-                                    <tr class="border-top-2 bg-light">
-                                        <td colspan="3" class="ps-4 fw-bold text-gray-600 fs-8 py-3">
-                                            Total Semester {{ $semester }}
-                                        </td>
-                                        <td class="text-center fw-bold text-info">
-                                            {{ $totalSks }} SKS
-                                        </td>
-                                        <td colspan="3"></td>
-                                    </tr>
-                                </tfoot>
-                            @endif
-                        </table>
-                    </div>
+                                                <span class="text-truncate fs-8 fw-semibold" style="max-width:140px">
+                                                    {{ $mk->dosen->user->nama }}
+                                                </span>
+                                            </div>
+                                        @else
+                                            <span class="text-muted fs-8">—</span>
+                                        @endif
+                                    </td>
+
+                                    {{-- AKSI — tanpa @can agar selalu tampil --}}
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-icon btn-sm btn-light-primary me-1"
+                                            title="Detail" data-bs-toggle="modal"
+                                            data-bs-target="#modalDetailMatkul{{ $mk->id }}">
+                                            <i class="bi bi-eye-fill fs-6"></i>
+                                        </button>
+
+                                        <button type="button"
+                                            class="btn btn-icon btn-sm btn-light-success me-1 btn-open-edit-matkul"
+                                            title="Edit" data-id="{{ $mk->id }}"
+                                            data-url="{{ route('matakuliah.update', $mk->id) }}"
+                                            data-kode="{{ $mk->kode_mk }}" data-nama="{{ $mk->nama_mk }}"
+                                            data-bobot="{{ $mk->bobot }}" data-jenis="{{ $mk->jenis }}"
+                                            data-id-dosen="{{ $mk->id_dosen }}"
+                                            data-mappings="{{ json_encode($mk->prodiMappings->map(fn($mp) => ['prodi_id' => $mp->id_prodi, 'semester' => $mp->semester])) }}">
+                                            <i class="bi bi-pencil-fill fs-6"></i>
+                                        </button>
+
+                                        <button type="button" class="btn btn-icon btn-sm btn-light-danger"
+                                            title="Hapus" data-bs-toggle="modal"
+                                            data-bs-target="#modalDeleteMatkul{{ $mk->id }}">
+                                            <i class="bi bi-trash-fill fs-6"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
-        {{-- end accordion-item Semester --}}
     @endforeach
-</div>
-{{-- end accordion Semester --}}
+@endif

@@ -1,9 +1,15 @@
-{{-- Partial: matakuliah/partials/all-data-table.blade.php --}}
-{{-- Variabel: $matakuliah (Collection) --}}
+{{--
+    Partial: matakuliah/partials/all-data-table.blade.php
+    Variabel: $matakuliah (Collection)
+
+    Dirender oleh:
+      - all-data.blade.php (SSR awal)
+      - MatkulController@allData  (AJAX response → res.html)
+--}}
 
 @if ($matakuliah->isEmpty())
     <tr>
-        <td colspan="8" class="text-center py-12">
+        <td colspan="8" class="text-center py-14">
             <i class="bi bi-search fs-2tx text-gray-300 d-block mb-3"></i>
             <div class="fw-bold text-gray-500 fs-5 mb-1">Tidak ada mata kuliah ditemukan</div>
             <div class="text-muted fs-7">Coba ubah filter atau kata kunci pencarian</div>
@@ -12,6 +18,7 @@
 @else
     @foreach ($matakuliah as $i => $mk)
         <tr>
+
             {{-- No --}}
             <td class="text-center text-muted">{{ $i + 1 }}</td>
 
@@ -25,7 +32,8 @@
             <td>
                 <span class="fw-semibold text-gray-800" data-cell="nama">{{ $mk->nama_mk }}</span>
                 @if ($mk->prodiMappings->isEmpty())
-                    <br><span class="badge badge-light-danger fs-9 mt-1">Belum dipetakan</span>
+                    <br>
+                    <span class="badge badge-light-danger fs-9 mt-1">Belum dipetakan</span>
                 @endif
             </td>
 
@@ -90,8 +98,13 @@
                 @endif
             </td>
 
-            {{-- AKSI — Seragam dengan standar user.blade.php --}}
+            {{-- ================================================================ --}}
+            {{-- AKSI — Detail | Edit | Hapus                                     --}}
+            {{-- @can dihapus agar semua role bisa melihat tombol                 --}}
+            {{-- Atur visibility via policy/gate di controller jika perlu         --}}
+            {{-- ================================================================ --}}
             <td class="text-center">
+
                 {{-- DETAIL --}}
                 <button type="button" class="btn btn-icon btn-sm btn-light-primary me-1" title="Detail"
                     data-bs-toggle="modal" data-bs-target="#modalDetailMatkul{{ $mk->id }}">
@@ -99,23 +112,20 @@
                 </button>
 
                 {{-- EDIT --}}
-                @can('kurikulum-update')
-                    <button type="button" class="btn btn-icon btn-sm btn-light-success me-1 btn-open-edit-matkul"
-                        title="Ubah" data-id="{{ $mk->id }}" data-url="{{ route('matakuliah.update', $mk->id) }}"
-                        data-kode="{{ $mk->kode_mk }}" data-nama="{{ $mk->nama_mk }}" data-bobot="{{ $mk->bobot }}"
-                        data-jenis="{{ $mk->jenis }}" data-id-dosen="{{ $mk->id_dosen }}"
-                        data-mappings="{{ json_encode($mk->prodiMappings->map(fn($mp) => ['prodi_id' => $mp->id_prodi, 'semester' => $mp->semester])) }}">
-                        <i class="bi bi-pencil-fill fs-5"></i>
-                    </button>
-                @endcan
+                <button type="button" class="btn btn-icon btn-sm btn-light-success me-1 btn-open-edit-matkul"
+                    title="Edit" data-id="{{ $mk->id }}" data-url="{{ route('matakuliah.update', $mk->id) }}"
+                    data-kode="{{ $mk->kode_mk }}" data-nama="{{ $mk->nama_mk }}" data-bobot="{{ $mk->bobot }}"
+                    data-jenis="{{ $mk->jenis }}" data-id-dosen="{{ $mk->id_dosen }}"
+                    data-mappings="{{ json_encode($mk->prodiMappings->map(fn($mp) => ['prodi_id' => $mp->id_prodi, 'semester' => $mp->semester])) }}">
+                    <i class="bi bi-pencil-fill fs-5"></i>
+                </button>
 
                 {{-- HAPUS --}}
-                @can('kurikulum-delete')
-                    <button type="button" class="btn btn-icon btn-sm btn-light-danger" title="Hapus"
-                        data-bs-toggle="modal" data-bs-target="#modalDeleteMatkul{{ $mk->id }}">
-                        <i class="bi bi-trash-fill fs-5"></i>
-                    </button>
-                @endcan
+                <button type="button" class="btn btn-icon btn-sm btn-light-danger" title="Hapus"
+                    data-bs-toggle="modal" data-bs-target="#modalDeleteMatkul{{ $mk->id }}">
+                    <i class="bi bi-trash-fill fs-5"></i>
+                </button>
+
             </td>
         </tr>
     @endforeach

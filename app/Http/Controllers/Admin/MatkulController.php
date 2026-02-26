@@ -140,55 +140,24 @@ class MatkulController extends Controller
         ));
     }
 
-    // ============================================================
-    // ALL DATA — Master List dengan AJAX Live Search & Filter
-    // ============================================================
     public function allData(Request $request)
     {
-        $query = Matkul::with(['prodiMappings.prodi', 'dosen.user'])->orderBy('kode_mk');
+        $matakuliah = Matkul::with(['dosen.user', 'prodiMappings.prodi'])
+            ->orderBy('kode_mk')
+            ->get();
 
-        if ($request->filled('search')) {
-            $s = $request->search;
-            $query->where(
-                fn($q) =>
-                $q->where('kode_mk', 'LIKE', "%{$s}%")->orWhere('nama_mk', 'LIKE', "%{$s}%")
-            );
-        }
-        if ($request->filled('id_prodi')) {
-            $query->whereHas(
-                'prodiMappings',
-                fn($q) =>
-                $q->where('id_prodi', (int) $request->id_prodi)
-            );
-        }
-        if ($request->filled('semester')) {
-            $query->whereHas(
-                'prodiMappings',
-                fn($q) =>
-                $q->where('semester', (int) $request->semester)
-            );
-        }
-        if ($request->filled('jenis')) {
-            $query->where('jenis', $request->jenis);
-        }
-
-        $matakuliah = $query->get();
-
-        if ($request->ajax() || $request->wantsJson() || $request->get('ajax') === '1') {
-            $html = view('matakuliah.partials.all-data-table', compact('matakuliah'))->render();
-            return response()->json([
-                'success' => true,
-                'html'    => $html,
-                'total'   => $matakuliah->count(),
-            ]);
-        }
-
-        $prodi       = Prodi::orderBy('kode_prodi')->get();
+        $prodi       = Prodi::orderBy('nama_prodi')->get();
         $dosen       = Dosen::with('user')->get();
-        $totalOrphan = Matkul::withoutMapping()->count();
+        $totalOrphan = Matkul::doesntHave('prodiMappings')->count();
 
-        return view('matakuliah.all-data', compact('matakuliah', 'prodi', 'dosen', 'totalOrphan'));
+        return view('matakuliah.all-data', compact(
+            'matakuliah',
+            'prodi',
+            'dosen',
+            'totalOrphan'
+        ));
     }
+
 
     // ============================================================
     // EDIT DATA — JSON untuk populate modal edit (AJAX)

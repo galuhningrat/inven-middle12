@@ -398,6 +398,7 @@
                                                                             'accordionId' =>
                                                                                 'acc-direct-' . $prodi->id,
                                                                             'allRenderedMks' => $allRenderedMks,
+                                                                            'rombel'         => (object) ['id_prodi' => $prodi->id, 'id' => 'direct-'.$prodi->id]
                                                                         ]
                                                                     )
                                                                 @endif
