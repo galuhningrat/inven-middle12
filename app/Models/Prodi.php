@@ -41,10 +41,19 @@ class Prodi extends Model
     }
 
     /**
-     * Semua mapping MK+Semester yang dimiliki prodi ini.
+     * ✅ FIX: Relasi ke Rombel (sebelumnya TIDAK ADA di model ini).
+     * Inilah penyebab utama Rombel tidak muncul di halaman Kurikulum.
      *
+     * Rombel terikat ke Prodi via kolom `id_prodi` di tabel `rombel`.
+     */
+    public function rombel()
+    {
+        return $this->hasMany(Rombel::class, 'id_prodi');
+    }
+
+    /**
+     * Semua mapping MK+Semester yang dimiliki prodi ini.
      * Gunakan ini untuk menampilkan kurikulum per prodi.
-     * Contoh: $prodi->matkulMappings()->where('semester', 3)->get()
      */
     public function matkulMappings()
     {
@@ -58,16 +67,13 @@ class Prodi extends Model
     /**
      * Ambil semua matkul untuk prodi ini (dari pivot).
      * Opsional filter per semester.
-     *
-     * @param  int|null $semester
-     * @return \Illuminate\Database\Eloquent\Collection
      */
     public function getAllMatkul(?int $semester = null)
     {
         $query = Matkul::whereHas(
             'prodiMappings',
             fn($q) => $q->where('id_prodi', $this->id)
-                        ->when($semester, fn($q2) => $q2->where('semester', $semester))
+                ->when($semester, fn($q2) => $q2->where('semester', $semester))
         )->with(['dosen.user', 'prodiMappings' => fn($q) => $q->where('id_prodi', $this->id)]);
 
         return $query->get();
@@ -75,8 +81,6 @@ class Prodi extends Model
 
     /**
      * Ambil daftar semester yang sudah punya MK di prodi ini.
-     *
-     * @return array  Contoh: [1, 2, 3, 4, 5, 6]
      */
     public function getAvailableSemesters(): array
     {

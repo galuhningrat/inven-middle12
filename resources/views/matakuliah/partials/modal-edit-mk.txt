@@ -1,0 +1,122 @@
+{{-- Modal Edit Mata Kuliah --}}
+{{-- Required variables: $dosen, $allProdi --}}
+<div class="modal fade" id="modalEditMK" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <form id="formEditMK" method="POST">
+                @csrf
+                <input type="hidden" name="_method" value="PUT">
+                <input type="hidden" name="ajax" value="1">
+                <input type="hidden" id="edit_mk_id" name="id">
+
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold text-gray-900">
+                        <i class="ki-duotone ki-pencil fs-2 text-warning me-2"><span class="path1"></span><span
+                                class="path2"></span></i>
+                        Edit Mata Kuliah
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="row g-5">
+                        {{-- Left Column: MK Info --}}
+                        <div class="col-md-5">
+                            <div class="card card-flush border border-dashed">
+                                <div class="card-header min-h-50px">
+                                    <h6 class="card-title fw-bold text-gray-700 fs-7">Informasi Mata Kuliah</h6>
+                                </div>
+                                <div class="card-body pt-3 pb-4">
+
+                                    <div class="mb-4">
+                                        <label class="form-label fw-semibold fs-7 required">Kode MK</label>
+                                        <input type="text" id="edit_kode_mk" name="kode_mk"
+                                            class="form-control form-control-sm font-monospace text-uppercase"
+                                            placeholder="Contoh: MKU101" maxlength="15">
+                                        <div class="invalid-feedback" id="err-edit-kode_mk"></div>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label class="form-label fw-semibold fs-7 required">Nama Mata Kuliah</label>
+                                        <input type="text" id="edit_nama_mk" name="nama_mk"
+                                            class="form-control form-control-sm" placeholder="Nama lengkap mata kuliah"
+                                            maxlength="100">
+                                        <div class="invalid-feedback" id="err-edit-nama_mk"></div>
+                                    </div>
+
+                                    <div class="row g-3 mb-4">
+                                        <div class="col-6">
+                                            <label class="form-label fw-semibold fs-7 required">Bobot SKS</label>
+                                            <select id="edit_bobot" name="bobot" class="form-select form-select-sm">
+                                                @for ($i = 1; $i <= 9; $i++)
+                                                    <option value="{{ $i }}">{{ $i }} SKS</option>
+                                                @endfor
+                                            </select>
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label fw-semibold fs-7 required">Jenis MK</label>
+                                            <select id="edit_jenis" name="jenis" class="form-select form-select-sm">
+                                                <option value="wajib">Wajib</option>
+                                                <option value="pilihan">Pilihan</option>
+                                                <option value="umum">Umum (MKU)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-0">
+                                        <label class="form-label fw-semibold fs-7 required">Dosen Pengampu</label>
+                                        <select id="edit_id_dosen" name="id_dosen" class="form-select form-select-sm">
+                                            <option value="">-- Pilih Dosen --</option>
+                                            @foreach ($dosen as $d)
+                                                <option value="{{ $d->id }}">
+                                                    {{ $d->user->nama ?? 'Dosen #' . $d->id }}</option>
+                                            @endforeach
+                                        </select>
+                                        <div class="invalid-feedback" id="err-edit-id_dosen"></div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Right Column: Mappings --}}
+                        <div class="col-md-7">
+                            <div class="card card-flush border border-dashed">
+                                <div class="card-header min-h-50px">
+                                    <h6 class="card-title fw-bold text-gray-700 fs-7">Mapping Prodi & Semester</h6>
+                                    <div class="card-toolbar">
+                                        <button type="button" id="btn-add-mapping"
+                                            class="btn btn-sm btn-light-primary py-1 px-3">
+                                            <i class="ki-duotone ki-plus fs-5 me-1"><span class="path1"></span><span
+                                                    class="path2"></span></i>
+                                            Tambah
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-body pt-3 pb-4">
+                                    <div class="row g-1 mb-2 text-muted fw-semibold fs-8">
+                                        <div class="col-5">Program Studi</div>
+                                        <div class="col-3">Semester</div>
+                                        <div class="col-3">Angkatan</div>
+                                        <div class="col-1"></div>
+                                    </div>
+                                    <div id="edit-mapping-rows"></div>
+                                    <div id="err-edit-mappings" class="text-danger fs-8 mt-2"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer py-3">
+                    <button type="button" class="btn btn-sm btn-light" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" id="btnSaveEditMK" class="btn btn-sm btn-primary">
+                        <i class="ki-duotone ki-check fs-4 me-2"><span class="path1"></span><span
+                                class="path2"></span></i>
+                        Simpan Perubahan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

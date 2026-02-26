@@ -3,9 +3,7 @@
 @section('toolbar')
     <div class="toolbar" id="kt_toolbar">
         <div id="kt_toolbar_container" class="container-fluid d-flex flex-stack">
-            <div data-kt-swapper="true" data-kt-swapper-mode="prepend"
-                data-kt-swapper-parent="{default: '#kt_content_container', 'lg': '#kt_toolbar_container'}"
-                class="page-title d-flex align-items-center flex-wrap me-3 mb-5 mb-lg-0">
+            <div class="page-title d-flex align-items-center flex-wrap me-3 mb-5 mb-lg-0">
                 <h1 class="d-flex align-items-center text-dark fw-bolder fs-3 my-1">Kurikulum Mata Kuliah</h1>
                 <span class="h-20px border-gray-200 border-start mx-4"></span>
             </div>
@@ -14,10 +12,8 @@
                     <li class="breadcrumb-item text-muted">
                         <a href="/dashboard" class="text-muted text-hover-primary">Dashboard</a>
                     </li>
-                    <li class="breadcrumb-item">
-                        <span class="bullet bg-gray-200 w-5px h-2px"></span>
-                    </li>
-                    <li class="breadcrumb-item text-dark">Mata Kuliah</li>
+                    <li class="breadcrumb-item"><span class="bullet bg-gray-200 w-5px h-2px"></span></li>
+                    <li class="breadcrumb-item text-dark">Kurikulum Mata Kuliah</li>
                 </ul>
             </div>
         </div>
@@ -25,13 +21,13 @@
 @endsection
 
 @section('content')
-    @php
-        /**
-         * Kumpulkan semua objek Matkul unik yang muncul di seluruh kurikulum.
-         * Modal detail & delete akan dirender sekali per MK, di luar struktur tabel.
-         */
-        $allRenderedMks = collect();
-    @endphp
+    {{--
+        $allRenderedMks — mutable Collection yang diisi secara bertahap saat
+        setiap baris tabel di-render. Dipakai untuk memastikan modal Detail/
+        Hapus hanya di-render SEKALI per MK unik, di luar semua tag <table>
+        agar tidak melanggar HTML spec (no <div> di dalam <tbody>).
+    --}}
+    @php $allRenderedMks = collect(); @endphp
 
     <div class="post d-flex flex-column-fluid" id="kt_post">
         <div id="kt_content_container" class="container-fluid">
@@ -88,11 +84,11 @@
                         <div class="card-body d-flex align-items-center p-5">
                             <div
                                 class="d-flex flex-center w-50px h-50px rounded-circle bg-light-warning me-4 flex-shrink-0">
-                                <i class="bi bi-person-badge-fill fs-2 text-warning"></i>
+                                <i class="bi bi-people-fill fs-2 text-warning"></i>
                             </div>
                             <div>
-                                <div class="fs-2hx fw-bold text-gray-800 lh-1">{{ $dosen->count() }}</div>
-                                <div class="fs-7 fw-semibold text-gray-500">Dosen Pengampu</div>
+                                <div class="fs-2hx fw-bold text-gray-800 lh-1">{{ $allRombel->count() }}</div>
+                                <div class="fs-7 fw-semibold text-gray-500">Rombel / Angkatan</div>
                             </div>
                         </div>
                     </div>
@@ -100,13 +96,15 @@
             </div>
 
             {{-- ================================================================ --}}
-            {{-- FILTER CARD                                                       --}}
+            {{-- FILTER & ACTION BAR                                               --}}
             {{-- ================================================================ --}}
             <div class="card mb-5">
                 <div class="card-body py-4">
                     <form method="GET" action="{{ route('matakuliah.index') }}"
                         class="d-flex flex-wrap gap-3 align-items-end">
-                        <div style="min-width:220px; max-width:320px; flex-grow:1">
+
+                        {{-- Cari MK --}}
+                        <div style="min-width:200px;max-width:300px;flex-grow:1">
                             <label class="form-label fw-semibold fs-7 mb-1">Cari Mata Kuliah</label>
                             <div class="input-group input-group-sm">
                                 <span class="input-group-text bg-white">
@@ -116,8 +114,10 @@
                                     value="{{ request('search') }}">
                             </div>
                         </div>
-                        <div style="min-width:180px">
-                            <label class="form-label fw-semibold fs-7 mb-1">Filter Prodi</label>
+
+                        {{-- Filter Prodi --}}
+                        <div style="min-width:170px">
+                            <label class="form-label fw-semibold fs-7 mb-1">Program Studi</label>
                             <select name="filter_prodi" class="form-select form-select-sm">
                                 <option value="">Semua Prodi</option>
                                 @foreach ($allProdi as $p)
@@ -128,8 +128,27 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div style="min-width:160px">
-                            <label class="form-label fw-semibold fs-7 mb-1">Filter Semester</label>
+
+                        {{-- Filter Rombel --}}
+                        <div style="min-width:180px">
+                            <label class="form-label fw-semibold fs-7 mb-1">Rombel / Angkatan</label>
+                            <select name="filter_rombel" class="form-select form-select-sm">
+                                <option value="">Semua Rombel</option>
+                                @foreach ($allRombel as $r)
+                                    <option value="{{ $r->id }}"
+                                        {{ request('filter_rombel') == $r->id ? 'selected' : '' }}>
+                                        {{ $r->nama_rombel }}
+                                        @if ($r->tahunMasuk)
+                                            ({{ $r->tahunMasuk->tahun_awal }})
+                                        @endif
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        {{-- Filter Semester --}}
+                        <div style="min-width:150px">
+                            <label class="form-label fw-semibold fs-7 mb-1">Semester</label>
                             <select name="filter_semester" class="form-select form-select-sm">
                                 <option value="">Semua Semester</option>
                                 @for ($s = 1; $s <= 14; $s++)
@@ -140,410 +159,516 @@
                                 @endfor
                             </select>
                         </div>
+
+                        {{-- Tombol Filter --}}
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-sm btn-primary">
                                 <i class="bi bi-funnel me-1"></i>Filter
                             </button>
-                            <a href="{{ route('matakuliah.index') }}" class="btn btn-sm btn-light">Reset</a>
-                        </div>
-                        <div class="ms-auto">
-                            <a href="{{ route('matakuliah.all-data') }}" class="btn btn-sm btn-light-primary">
-                                <i class="bi bi-table me-1"></i>Lihat Master Data
+                            <a href="{{ route('matakuliah.index') }}" class="btn btn-sm btn-light">
+                                <i class="bi bi-x-lg me-1"></i>Reset
                             </a>
                         </div>
+
+                        {{-- Aksi kanan --}}
+                        <div class="ms-auto d-flex gap-2 align-items-center">
+                            @can('kurikulum-create')
+                                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal"
+                                    data-bs-target="#modalTambahMatkul">
+                                    <i class="bi bi-plus-lg me-1"></i>Tambah MK
+                                </button>
+                            @endcan
+                            <a href="{{ route('matakuliah.all-data') }}" class="btn btn-sm btn-light-primary">
+                                <i class="bi bi-table me-1"></i>Master Data
+                            </a>
+                        </div>
+
                     </form>
                 </div>
             </div>
 
             {{-- ================================================================ --}}
-            {{-- HIERARCHY: Fakultas > Prodi > Semester > MK                     --}}
+            {{-- HIERARKI 5 LEVEL                                                  --}}
             {{-- ================================================================ --}}
             @if ($fakultas->isEmpty())
                 <div class="card">
                     <div class="card-body text-center py-20">
                         <i class="bi bi-folder2-open fs-5tx text-gray-300 d-block mb-4"></i>
-                        <div class="fs-4 fw-bold text-gray-500">Belum ada data fakultas</div>
+                        <div class="fs-4 fw-bold text-gray-500 mb-2">Belum ada data fakultas</div>
+                        <p class="text-muted fs-7">Tambahkan Fakultas terlebih dahulu melalui menu Data Master.</p>
                     </div>
                 </div>
             @else
-                {{-- LEVEL 1: FAKULTAS — Nav-Tabs --}}
+                {{-- ┌──────────────────────────────────────────────────────────┐ --}}
+                {{-- │  LEVEL 1 — FAKULTAS : Nav-Tabs horizontal                │ --}}
+                {{-- └──────────────────────────────────────────────────────────┘ --}}
                 <div class="card">
                     <div class="card-header border-0 pt-5 pb-0">
-                        <ul class="nav nav-tabs nav-line-tabs nav-line-tabs-2x border-0 fs-6 fw-bold" id="fakultasTabs"
+                        <ul class="nav nav-tabs nav-line-tabs nav-line-tabs-2x border-0 fs-6 fw-bold" id="tabFakultas"
                             role="tablist">
                             @foreach ($fakultas as $fi => $fak)
                                 <li class="nav-item" role="presentation">
                                     <button class="nav-link text-active-primary pb-4 {{ $fi === 0 ? 'active' : '' }}"
-                                        data-bs-toggle="tab" data-bs-target="#fak-pane-{{ $fak->id }}"
-                                        type="button" role="tab">
+                                        id="tab-fak-{{ $fak->id }}" data-bs-toggle="tab"
+                                        data-bs-target="#pane-fak-{{ $fak->id }}" type="button" role="tab"
+                                        aria-controls="pane-fak-{{ $fak->id }}"
+                                        aria-selected="{{ $fi === 0 ? 'true' : 'false' }}">
                                         <i class="bi bi-building me-2"></i>
                                         {{ $fak->nama_fakultas }}
-                                        <span class="badge badge-light-primary ms-2">{{ $fak->prodi->count() }}
-                                            Prodi</span>
+                                        <span class="badge badge-light-primary ms-2">
+                                            {{ $fak->prodi->count() }} Prodi
+                                        </span>
                                     </button>
                                 </li>
                             @endforeach
                         </ul>
-                    </div>
+                    </div>{{-- end card-header --}}
 
-                    <div class="card-body pt-5">
-                        <div class="tab-content">
+                    <div class="card-body pt-6">
+                        <div class="tab-content" id="tabFakultasContent">
+
                             @foreach ($fakultas as $fi => $fak)
+                                {{-- ── TAB PANE FAKULTAS ─────────────────────────────────── --}}
                                 <div class="tab-pane fade {{ $fi === 0 ? 'show active' : '' }}"
-                                    id="fak-pane-{{ $fak->id }}" role="tabpanel">
+                                    id="pane-fak-{{ $fak->id }}" role="tabpanel"
+                                    aria-labelledby="tab-fak-{{ $fak->id }}">
 
                                     @if ($fak->prodi->isEmpty())
-                                        <div class="text-center py-10 text-muted">
+                                        <div class="text-center py-12 text-muted">
                                             <i class="bi bi-info-circle fs-3x text-gray-300 d-block mb-3"></i>
-                                            Belum ada program studi di fakultas ini.
+                                            <p class="fs-7 mb-0">Belum ada program studi di fakultas ini.</p>
                                         </div>
                                     @else
-                                        {{-- LEVEL 2: PRODI — Nav Pills vertikal --}}
-                                        <div class="d-flex gap-5">
-                                            {{-- Sidebar Prodi --}}
-                                            <div class="flex-shrink-0" style="width:230px">
-                                                <div class="nav flex-column nav-pills gap-2"
-                                                    id="prodi-pills-{{ $fak->id }}" role="tablist">
+                                        {{-- ┌─────────────────────────────────────────────────┐ --}}
+                                        {{-- │  LEVEL 2 — PRODI : Nav-Pills vertikal (sidebar) │ --}}
+                                        {{-- └─────────────────────────────────────────────────┘ --}}
+                                        <div class="d-flex gap-6 align-items-start">
+
+                                            {{-- Sidebar Nav-Pills Prodi --}}
+                                            <div class="flex-shrink-0" style="width:240px;min-width:200px">
+                                                <div class="nav flex-column nav-pills gap-1"
+                                                    id="pills-prodi-{{ $fak->id }}" role="tablist"
+                                                    aria-orientation="vertical">
+
                                                     @foreach ($fak->prodi as $pi => $prodi)
                                                         <button
-                                                            class="nav-link btn btn-flex btn-active-light-primary text-start px-4 py-3
-                                        {{ $pi === 0 ? 'active' : '' }}"
-                                                            data-bs-toggle="pill"
-                                                            data-bs-target="#prodi-pane-{{ $prodi->id }}"
-                                                            type="button" role="tab">
-                                                            <span class="d-flex flex-column align-items-start w-100">
+                                                            class="nav-link btn btn-flex btn-active-light-primary
+                                                                   text-start px-4 py-3 {{ $pi === 0 ? 'active' : '' }}"
+                                                            id="pill-prodi-{{ $prodi->id }}" data-bs-toggle="pill"
+                                                            data-bs-target="#pane-prodi-{{ $prodi->id }}"
+                                                            type="button" role="tab"
+                                                            aria-controls="pane-prodi-{{ $prodi->id }}"
+                                                            aria-selected="{{ $pi === 0 ? 'true' : 'false' }}">
+
+                                                            <span
+                                                                class="d-flex flex-column align-items-start w-100 overflow-hidden">
                                                                 <span
-                                                                    class="fw-bold fs-7 text-gray-800">{{ $prodi->nama_prodi }}</span>
-                                                                <span class="fs-8 text-gray-500 mt-1">
+                                                                    class="fw-bold fs-7 text-gray-800 text-truncate w-100">
+                                                                    {{ $prodi->nama_prodi }}
+                                                                </span>
+                                                                <span class="fs-9 text-gray-500 mt-1">
                                                                     <span class="text-primary fw-bold">
                                                                         {{ $statsByProdi[$prodi->id]['total'] ?? 0 }}
                                                                     </span> MK &bull;
                                                                     <span class="text-success fw-bold">
                                                                         {{ $statsByProdi[$prodi->id]['total_sks'] ?? 0 }}
-                                                                    </span> SKS
+                                                                    </span> SKS &bull;
+                                                                    <span class="text-warning fw-bold">
+                                                                        {{ $prodi->rombel->count() }}
+                                                                    </span> Rombel
                                                                 </span>
                                                             </span>
-                                                            <i class="bi bi-chevron-right ms-auto text-gray-400 fs-8"></i>
+                                                            <i
+                                                                class="bi bi-chevron-right ms-auto text-gray-400 flex-shrink-0"></i>
                                                         </button>
                                                     @endforeach
+
                                                 </div>
                                             </div>
+                                            {{-- end sidebar Prodi --}}
 
                                             {{-- Konten Prodi --}}
                                             <div class="flex-grow-1 min-w-0">
-                                                <div class="tab-content">
-                                                    @foreach ($fak->prodi as $pi => $prodi)
-                                                        <div class="tab-pane fade {{ $pi === 0 ? 'show active' : '' }}"
-                                                            id="prodi-pane-{{ $prodi->id }}" role="tabpanel">
+                                                <div class="tab-content" id="pills-prodi-content-{{ $fak->id }}">
 
-                                                            {{-- Header Prodi --}}
-                                                            <div class="d-flex align-items-center mb-5 pb-4 border-bottom">
+                                                    @foreach ($fak->prodi as $pi => $prodi)
+                                                        {{-- ── TAB PANE PRODI ──────────────────────────────── --}}
+                                                        <div class="tab-pane fade {{ $pi === 0 ? 'show active' : '' }}"
+                                                            id="pane-prodi-{{ $prodi->id }}" role="tabpanel"
+                                                            aria-labelledby="pill-prodi-{{ $prodi->id }}">
+
+                                                            {{-- Header Info Prodi --}}
+                                                            <div
+                                                                class="d-flex align-items-start mb-5 pb-4 border-bottom border-dashed">
                                                                 <div class="flex-grow-1">
-                                                                    <h4 class="fw-bold text-gray-800 mb-1">
-                                                                        {{ $prodi->nama_prodi }}</h4>
-                                                                    <div class="d-flex gap-2">
+                                                                    <h4 class="fw-bold text-gray-800 mb-2">
+                                                                        {{ $prodi->nama_prodi }}
+                                                                    </h4>
+                                                                    <div class="d-flex gap-2 flex-wrap">
                                                                         @if ($prodi->kode_prodi)
-                                                                            <span
-                                                                                class="badge badge-light-info">{{ $prodi->kode_prodi }}</span>
+                                                                            <span class="badge badge-light-dark fs-8">
+                                                                                <i
+                                                                                    class="bi bi-hash me-1"></i>{{ $prodi->kode_prodi }}
+                                                                            </span>
                                                                         @endif
                                                                         @if ($prodi->jenjang)
-                                                                            <span
-                                                                                class="badge badge-light-success">{{ strtoupper($prodi->jenjang) }}</span>
+                                                                            <span class="badge badge-light-success fs-8">
+                                                                                {{ strtoupper($prodi->jenjang) }}
+                                                                            </span>
+                                                                        @endif
+                                                                        @if ($prodi->status_akre)
+                                                                            <span class="badge badge-light-info fs-8">
+                                                                                Akreditasi: {{ $prodi->status_akre }}
+                                                                            </span>
                                                                         @endif
                                                                     </div>
                                                                 </div>
-                                                                <div class="d-flex gap-5 text-center flex-shrink-0">
+                                                                {{-- Stats ringkas --}}
+                                                                <div class="d-flex gap-4 text-center ms-4 flex-shrink-0">
                                                                     <div>
-                                                                        <div class="fs-2 fw-bolder text-primary">
+                                                                        <div class="fs-1 fw-bolder text-primary lh-1">
                                                                             {{ $statsByProdi[$prodi->id]['total'] ?? 0 }}
                                                                         </div>
-                                                                        <div class="fs-8 text-muted">Mata Kuliah</div>
+                                                                        <div class="fs-9 text-muted mt-1">MK</div>
                                                                     </div>
-                                                                    <div class="border-start border-dashed mx-1"></div>
+                                                                    <div class="border-start border-dashed"></div>
                                                                     <div>
-                                                                        <div class="fs-2 fw-bolder text-success">
+                                                                        <div class="fs-1 fw-bolder text-success lh-1">
                                                                             {{ $statsByProdi[$prodi->id]['total_sks'] ?? 0 }}
                                                                         </div>
-                                                                        <div class="fs-8 text-muted">Total SKS</div>
+                                                                        <div class="fs-9 text-muted mt-1">SKS</div>
+                                                                    </div>
+                                                                    <div class="border-start border-dashed"></div>
+                                                                    <div>
+                                                                        <div class="fs-1 fw-bolder text-warning lh-1">
+                                                                            {{ $prodi->rombel->count() }}
+                                                                        </div>
+                                                                        <div class="fs-9 text-muted mt-1">Rombel</div>
                                                                     </div>
                                                                 </div>
                                                             </div>
+                                                            {{-- end header Prodi --}}
 
-                                                            @php
-                                                                $bySemester = $prodi->matkulMappings
-                                                                    ->sortBy('semester')
-                                                                    ->groupBy('semester');
-                                                            @endphp
+                                                            {{-- ─────────────────────────────────────────────── --}}
+                                                            {{-- Cek apakah Prodi memiliki Rombel               --}}
+                                                            {{-- ─────────────────────────────────────────────── --}}
+                                                            @if ($prodi->rombel->isEmpty())
+                                                                {{--
+                                                                    Prodi belum punya Rombel → tampilkan MK
+                                                                    langsung per semester tanpa level Rombel.
+                                                                    Ini adalah fallback agar kurikulum tetap
+                                                                    bisa dilihat meski Rombel belum dibuat.
+                                                                --}}
+                                                                @php
+                                                                    $bySemesterDirect = collect(
+                                                                        $mkByProdi[$prodi->id] ?? [],
+                                                                    )->sortKeys();
+                                                                @endphp
 
-                                                            @if ($bySemester->isEmpty())
-                                                                <div class="text-center py-10 text-muted">
-                                                                    <i
-                                                                        class="bi bi-file-earmark-x fs-3x text-gray-300 d-block mb-3"></i>
-                                                                    Belum ada mata kuliah yang dipetakan ke prodi ini.
-                                                                </div>
+                                                                @if ($bySemesterDirect->isEmpty())
+                                                                    <div class="text-center py-10 text-muted">
+                                                                        <i
+                                                                            class="bi bi-file-earmark-x fs-3x text-gray-300 d-block mb-3"></i>
+                                                                        <p class="fs-7 mb-1 fw-semibold">Belum ada
+                                                                            kurikulum</p>
+                                                                        <p class="fs-8 mb-0">
+                                                                            Tambahkan mata kuliah dan petakan ke prodi ini,
+                                                                            atau buat Rombel terlebih dahulu.
+                                                                        </p>
+                                                                    </div>
+                                                                @else
+                                                                    <div
+                                                                        class="alert alert-light-warning border border-warning border-dashed d-flex align-items-center mb-5 py-3">
+                                                                        <i
+                                                                            class="bi bi-exclamation-triangle-fill text-warning me-3 fs-4 flex-shrink-0"></i>
+                                                                        <span class="fs-7">
+                                                                            Prodi ini belum memiliki Rombel/Angkatan.
+                                                                            Mata kuliah ditampilkan langsung per semester.
+                                                                            <a href="{{ route('rombel.index') }}"
+                                                                                class="fw-bold text-warning ms-1">
+                                                                                Buat Rombel &rarr;
+                                                                            </a>
+                                                                        </span>
+                                                                    </div>
+
+                                                                    @include(
+                                                                        'matakuliah.partials.semester-accordion',
+                                                                        [
+                                                                            'bySemester' => $bySemesterDirect,
+                                                                            'accordionId' =>
+                                                                                'acc-direct-' . $prodi->id,
+                                                                            'allRenderedMks' => $allRenderedMks,
+                                                                        ]
+                                                                    )
+                                                                @endif
                                                             @else
-                                                                {{-- LEVEL 3: SEMESTER — Accordion --}}
+                                                                {{-- ┌────────────────────────────────────────────┐ --}}
+                                                                {{-- │  LEVEL 3 — ROMBEL : Accordion luar         │ --}}
+                                                                {{-- └────────────────────────────────────────────┘ --}}
                                                                 <div class="accordion accordion-icon-collapse"
-                                                                    id="sem-acc-{{ $prodi->id }}">
-                                                                    @foreach ($bySemester as $semester => $mappings)
-                                                                        @php $semId = 'sem-' . $prodi->id . '-' . $semester; @endphp
-                                                                        <div class="accordion-item mb-3 border rounded">
+                                                                    id="acc-rombel-prodi-{{ $prodi->id }}">
+
+                                                                    @foreach ($prodi->rombel as $ri => $rombel)
+                                                                        @php
+                                                                            /*
+                                                                             * MK di kurikulum terikat ke Prodi+Semester,
+                                                                             * BUKAN ke Rombel secara langsung.
+                                                                             * Semua Rombel dalam Prodi yang sama
+                                                                             * berbagi kurikulum MK yang sama.
+                                                                             * Grouping per semester diambil dari $mkByProdi.
+                                                                             */
+                                                                            $bySemester = collect(
+                                                                                $mkByProdi[$prodi->id] ?? [],
+                                                                            )->sortKeys();
+
+                                                                            $rombelPaneId =
+                                                                                'pane-rombel-' . $rombel->id;
+
+                                                                            // Badge summary untuk header Rombel
+                                                                            $rombelTotalMk = $bySemester->sum(
+                                                                                fn($arr) => count($arr),
+                                                                            );
+                                                                            $rombelTotalSem = $bySemester->count();
+                                                                            $rombelTotalSks = $bySemester->reduce(
+                                                                                function ($carry, $arr) {
+                                                                                    foreach ($arr as $mp) {
+                                                                                        $carry +=
+                                                                                            $mp->matkul?->bobot ?? 0;
+                                                                                    }
+                                                                                    return $carry;
+                                                                                },
+                                                                                0,
+                                                                            );
+
+                                                                            // Label angkatan dari TahunAkademik
+                                                                            $tahunAwal =
+                                                                                $rombel->tahunMasuk?->tahun_awal;
+                                                                            $angkatanLabel = $tahunAwal
+                                                                                ? 'Angkatan ' . $tahunAwal
+                                                                                : 'Angkatan —';
+                                                                        @endphp
+
+                                                                        {{-- ── ACCORDION ITEM ROMBEL ─────────────────────── --}}
+                                                                        <div
+                                                                            class="accordion-item mb-3 border rounded-2 shadow-sm">
+
                                                                             <h2 class="accordion-header"
-                                                                                id="hd-{{ $semId }}">
+                                                                                id="hd-{{ $rombelPaneId }}">
                                                                                 <button
-                                                                                    class="accordion-button collapsed fw-semibold fs-6 py-4 px-5 bg-light-primary rounded"
+                                                                                    class="accordion-button {{ $ri !== 0 ? 'collapsed' : '' }}
+                                                                                           fw-semibold py-4 px-5
+                                                                                           rounded-2 bg-light-primary"
                                                                                     type="button"
                                                                                     data-bs-toggle="collapse"
-                                                                                    data-bs-target="#col-{{ $semId }}"
-                                                                                    aria-expanded="false">
+                                                                                    data-bs-target="#{{ $rombelPaneId }}"
+                                                                                    aria-expanded="{{ $ri === 0 ? 'true' : 'false' }}"
+                                                                                    aria-controls="{{ $rombelPaneId }}">
+
                                                                                     <div
-                                                                                        class="d-flex align-items-center w-100 me-3">
-                                                                                        <span
-                                                                                            class="badge badge-primary me-3 px-3 flex-shrink-0">
-                                                                                            Sem. {{ $semester }}
-                                                                                        </span>
-                                                                                        <span
-                                                                                            class="fw-bold text-gray-800">
-                                                                                            Semester {{ $semester }}
-                                                                                        </span>
-                                                                                        <span class="ms-auto d-flex gap-2">
+                                                                                        class="d-flex align-items-center w-100 me-3 gap-3">
+
+                                                                                        {{-- Avatar Rombel --}}
+                                                                                        <div
+                                                                                            class="d-flex flex-center w-40px h-40px
+                                                                                                    rounded-circle bg-primary flex-shrink-0">
+                                                                                            <i
+                                                                                                class="bi bi-people-fill text-white fs-6"></i>
+                                                                                        </div>
+
+                                                                                        {{-- Info Rombel --}}
+                                                                                        <div class="flex-grow-1 min-w-0">
+                                                                                            <div
+                                                                                                class="fw-bold text-gray-800 fs-6 d-flex align-items-center gap-2">
+                                                                                                {{ $rombel->nama_rombel }}
+                                                                                                <span
+                                                                                                    class="badge badge-light-dark fw-normal fs-9 font-monospace">
+                                                                                                    {{ $rombel->kode_rombel }}
+                                                                                                </span>
+                                                                                            </div>
+                                                                                            <div class="d-flex gap-2 mt-1">
+                                                                                                <span
+                                                                                                    class="badge badge-light-warning fs-9">
+                                                                                                    <i
+                                                                                                        class="bi bi-calendar3 me-1"></i>
+                                                                                                    {{ $angkatanLabel }}
+                                                                                                </span>
+                                                                                                @if ($rombel->dosen?->user?->nama)
+                                                                                                    <span
+                                                                                                        class="badge badge-light-info fs-9">
+                                                                                                        <i
+                                                                                                            class="bi bi-person me-1"></i>
+                                                                                                        DPA:
+                                                                                                        {{ $rombel->dosen->user->nama }}
+                                                                                                    </span>
+                                                                                                @endif
+                                                                                            </div>
+                                                                                        </div>
+
+                                                                                        {{-- Badge Summary --}}
+                                                                                        <div
+                                                                                            class="d-flex gap-2 ms-auto flex-shrink-0">
                                                                                             <span
-                                                                                                class="badge badge-light-primary">
-                                                                                                {{ $mappings->count() }}
-                                                                                                Mata Kuliah
+                                                                                                class="badge badge-light-primary fs-8">
+                                                                                                <i
+                                                                                                    class="bi bi-layers me-1"></i>
+                                                                                                {{ $rombelTotalSem }}
+                                                                                                Semester
                                                                                             </span>
                                                                                             <span
-                                                                                                class="badge badge-light-success">
-                                                                                                {{ $mappings->sum(fn($mp) => $mp->matkul?->bobot ?? 0) }}
-                                                                                                SKS
+                                                                                                class="badge badge-light-success fs-8">
+                                                                                                <i
+                                                                                                    class="bi bi-book me-1"></i>
+                                                                                                {{ $rombelTotalMk }} MK
                                                                                             </span>
-                                                                                        </span>
+                                                                                            <span
+                                                                                                class="badge badge-light-info fs-8">
+                                                                                                {{ $rombelTotalSks }} SKS
+                                                                                            </span>
+                                                                                        </div>
+
                                                                                     </div>
                                                                                 </button>
                                                                             </h2>
-                                                                            <div id="col-{{ $semId }}"
-                                                                                class="accordion-collapse collapse"
-                                                                                data-bs-parent="#sem-acc-{{ $prodi->id }}">
-                                                                                <div class="accordion-body p-0">
 
-                                                                                    {{-- LEVEL 4: TABEL MK --}}
-                                                                                    <div class="table-responsive">
-                                                                                        <table
-                                                                                            class="table table-bordered table-striped table-sm align-middle fs-6 gy-2 w-100 mb-0">
-                                                                                            <thead
-                                                                                                class="bg-gray-100 text-gray-800 border-bottom border-gray-300">
-                                                                                                <tr
-                                                                                                    class="fw-bold text-uppercase fs-8">
-                                                                                                    <th class="ps-4 py-3"
-                                                                                                        style="width:110px">
-                                                                                                        Kode MK</th>
-                                                                                                    <th class="py-3">Nama
-                                                                                                        Mata Kuliah</th>
-                                                                                                    <th class="text-center py-3"
-                                                                                                        style="width:65px">
-                                                                                                        SKS</th>
-                                                                                                    <th class="text-center py-3"
-                                                                                                        style="width:90px">
-                                                                                                        Jenis</th>
-                                                                                                    <th class="py-3"
-                                                                                                        style="width:175px">
-                                                                                                        Dosen Pengampu</th>
-                                                                                                    <th class="py-3"
-                                                                                                        style="width:110px">
-                                                                                                        Berlaku</th>
-                                                                                                    <th class="text-center py-3"
-                                                                                                        style="width:100px">
-                                                                                                        Aksi</th>
-                                                                                                </tr>
-                                                                                            </thead>
-                                                                                            <tbody>
-                                                                                                @foreach ($mappings->sortBy(fn($mp) => $mp->matkul?->kode_mk) as $mapping)
-                                                                                                    @php $mk = $mapping->matkul; @endphp
-                                                                                                    @if (!$mk)
-                                                                                                        @continue
-                                                                                                    @endif
+                                                                            {{-- ── BODY ROMBEL ────────────────────────────── --}}
+                                                                            <div id="{{ $rombelPaneId }}"
+                                                                                class="accordion-collapse collapse
+                                                                                        {{ $ri === 0 ? 'show' : '' }}"
+                                                                                aria-labelledby="hd-{{ $rombelPaneId }}"
+                                                                                data-bs-parent="#acc-rombel-prodi-{{ $prodi->id }}">
 
-                                                                                                    {{-- Kumpulkan MK unik untuk dirender modalnya di luar tabel --}}
-                                                                                                    @php $allRenderedMks->put($mk->id, $mk); @endphp
-
-                                                                                                    <tr>
-                                                                                                        <td class="ps-4">
-                                                                                                            <span
-                                                                                                                class="badge badge-light fw-bold text-dark font-monospace">
-                                                                                                                {{ $mk->kode_mk }}
-                                                                                                            </span>
-                                                                                                        </td>
-                                                                                                        <td
-                                                                                                            class="fw-semibold text-gray-800">
-                                                                                                            {{ $mk->nama_mk }}
-                                                                                                        </td>
-                                                                                                        <td
-                                                                                                            class="text-center">
-                                                                                                            <span
-                                                                                                                class="fw-bolder text-primary">{{ $mk->bobot }}</span>
-                                                                                                            <span
-                                                                                                                class="text-muted fs-9">
-                                                                                                                sks</span>
-                                                                                                        </td>
-                                                                                                        <td
-                                                                                                            class="text-center">
-                                                                                                            @php
-                                                                                                                $jc = match (
-                                                                                                                    $mk->jenis
-                                                                                                                ) {
-                                                                                                                    'wajib'
-                                                                                                                        => 'primary',
-                                                                                                                    'pilihan'
-                                                                                                                        => 'warning',
-                                                                                                                    'umum'
-                                                                                                                        => 'info',
-                                                                                                                    default
-                                                                                                                        => 'secondary',
-                                                                                                                };
-                                                                                                            @endphp
-                                                                                                            <span
-                                                                                                                class="badge badge-light-{{ $jc }} fw-semibold">
-                                                                                                                {{ $mk->jenis === 'umum' ? 'MKU' : ucfirst($mk->jenis) }}
-                                                                                                            </span>
-                                                                                                        </td>
-                                                                                                        <td>
-                                                                                                            @if ($mk->dosen && $mk->dosen->user)
-                                                                                                                <div
-                                                                                                                    class="d-flex align-items-center gap-2">
-                                                                                                                    <div
-                                                                                                                        class="symbol symbol-25px flex-shrink-0">
-                                                                                                                        <span
-                                                                                                                            class="symbol-label bg-light-success fs-9 fw-bold text-success">
-                                                                                                                            {{ strtoupper(substr($mk->dosen->user->nama, 0, 1)) }}
-                                                                                                                        </span>
-                                                                                                                    </div>
-                                                                                                                    <span
-                                                                                                                        class="text-truncate fs-8"
-                                                                                                                        style="max-width:125px">
-                                                                                                                        {{ $mk->dosen->user->nama }}
-                                                                                                                    </span>
-                                                                                                                </div>
-                                                                                                            @else
-                                                                                                                <span
-                                                                                                                    class="text-muted">—</span>
-                                                                                                            @endif
-                                                                                                        </td>
-                                                                                                        <td>
-                                                                                                            @if ($mk->prodiMappings->count() > 1)
-                                                                                                                <span
-                                                                                                                    class="badge badge-light-info fs-9"
-                                                                                                                    title="{{ $mk->prodiMappings->pluck('prodi.nama_prodi')->filter()->implode(', ') }}">
-                                                                                                                    {{ $mk->prodiMappings->count() }}
-                                                                                                                    Prodi
-                                                                                                                </span>
-                                                                                                            @else
-                                                                                                                <span
-                                                                                                                    class="badge badge-light fs-9">Prodi
-                                                                                                                    ini</span>
-                                                                                                            @endif
-                                                                                                        </td>
-                                                                                                        <td
-                                                                                                            class="text-center">
-                                                                                                            {{-- DETAIL — ID pakai partial (modalDetailMatkul) --}}
-                                                                                                            <button
-                                                                                                                type="button"
-                                                                                                                class="btn btn-icon btn-sm btn-light-primary me-1"
-                                                                                                                title="Detail"
-                                                                                                                data-bs-toggle="modal"
-                                                                                                                data-bs-target="#modalDetailMatkul{{ $mk->id }}">
-                                                                                                                <i
-                                                                                                                    class="bi bi-eye-fill fs-5"></i>
-                                                                                                            </button>
-
-                                                                                                            {{-- EDIT --}}
-                                                                                                            @can('kurikulum-update')
-                                                                                                                <button
-                                                                                                                    type="button"
-                                                                                                                    class="btn btn-icon btn-sm btn-light-success me-1 btn-open-edit-matkul"
-                                                                                                                    title="Ubah"
-                                                                                                                    data-id="{{ $mk->id }}"
-                                                                                                                    data-url="{{ route('matakuliah.update', $mk->id) }}"
-                                                                                                                    data-kode="{{ $mk->kode_mk }}"
-                                                                                                                    data-nama="{{ $mk->nama_mk }}"
-                                                                                                                    data-bobot="{{ $mk->bobot }}"
-                                                                                                                    data-jenis="{{ $mk->jenis }}"
-                                                                                                                    data-id-dosen="{{ $mk->id_dosen }}"
-                                                                                                                    data-mappings="{{ json_encode($mk->prodiMappings->map(fn($mp) => ['prodi_id' => $mp->id_prodi, 'semester' => $mp->semester])) }}">
-                                                                                                                    <i
-                                                                                                                        class="bi bi-pencil-fill fs-5"></i>
-                                                                                                                </button>
-                                                                                                            @endcan
-
-                                                                                                            {{-- HAPUS — ID pakai partial (modalDeleteMatkul) --}}
-                                                                                                            @can('kurikulum-delete')
-                                                                                                                <button
-                                                                                                                    type="button"
-                                                                                                                    class="btn btn-icon btn-sm btn-light-danger"
-                                                                                                                    title="Hapus"
-                                                                                                                    data-bs-toggle="modal"
-                                                                                                                    data-bs-target="#modalDeleteMatkul{{ $mk->id }}">
-                                                                                                                    <i
-                                                                                                                        class="bi bi-trash-fill fs-5"></i>
-                                                                                                                </button>
-                                                                                                            @endcan
-                                                                                                        </td>
-                                                                                                    </tr>
-                                                                                                    {{-- ⚠️ JANGAN taruh modal di sini (di dalam tbody) --}}
-                                                                                                @endforeach
-                                                                                            </tbody>
-                                                                                        </table>
-                                                                                    </div>
-
+                                                                                <div class="accordion-body px-5 py-4">
+                                                                                    @if ($bySemester->isEmpty())
+                                                                                        <div
+                                                                                            class="text-center py-8 text-muted">
+                                                                                            <i
+                                                                                                class="bi bi-inbox fs-2x text-gray-300 d-block mb-2"></i>
+                                                                                            <p class="fs-7 mb-0">
+                                                                                                Belum ada mata kuliah yang
+                                                                                                dipetakan
+                                                                                                ke Prodi
+                                                                                                <strong>{{ $prodi->nama_prodi }}</strong>.
+                                                                                            </p>
+                                                                                        </div>
+                                                                                    @else
+                                                                                        {{-- ┌──────────────────────────────────────┐ --}}
+                                                                                        {{-- │  LEVEL 4 — SEMESTER : Accordion dlm  │ --}}
+                                                                                        {{-- │  LEVEL 5 — MK : Tabel di tiap sem.   │ --}}
+                                                                                        {{-- └──────────────────────────────────────┘ --}}
+                                                                                        @include(
+                                                                                            'matakuliah.partials.semester-accordion',
+                                                                                            [
+                                                                                                'bySemester' => $bySemester,
+                                                                                                'accordionId' =>
+                                                                                                    'acc-sem-rombel-' .
+                                                                                                    $rombel->id,
+                                                                                                'allRenderedMks' => $allRenderedMks,
+                                                                                            ]
+                                                                                        )
+                                                                                    @endif
                                                                                 </div>
                                                                             </div>
+                                                                            {{-- end accordion-collapse Rombel --}}
+
                                                                         </div>
+                                                                        {{-- end accordion-item Rombel --}}
                                                                     @endforeach
+
                                                                 </div>
-                                                            @endif {{-- end bySemester isEmpty --}}
+                                                                {{-- end accordion Rombel --}}
+                                                            @endif
+                                                            {{-- end rombel isEmpty check --}}
+
                                                         </div>
+                                                        {{-- end tab-pane Prodi --}}
                                                     @endforeach
+
                                                 </div>
+                                                {{-- end tab-content Prodi --}}
                                             </div>
+                                            {{-- end flex-grow Prodi konten --}}
+
                                         </div>
-                                    @endif {{-- end prodi isEmpty --}}
+                                        {{-- end d-flex Prodi --}}
+                                    @endif
+                                    {{-- end prodi isEmpty --}}
+
                                 </div>
+                                {{-- end tab-pane Fakultas --}}
                             @endforeach
+
                         </div>
+                        {{-- end tab-content Fakultas --}}
                     </div>
+                    {{-- end card-body --}}
                 </div>
-            @endif {{-- end fakultas isEmpty --}}
+                {{-- end card --}}
+            @endif
+            {{-- end fakultas isEmpty --}}
 
         </div>
+        {{-- end container --}}
     </div>
+    {{-- end post --}}
 
-    {{--
-    ╔══════════════════════════════════════════════════════════════════╗
-    ║  MODALS — Dirender di luar seluruh struktur card/table/accordion ║
-    ║  Satu modal per MK unik, tidak peduli di berapa prodi/semester   ║
-    ║  MK itu muncul (dedup via $allRenderedMks collect).              ║
-    ╚══════════════════════════════════════════════════════════════════╝
---}}
+    {{-- ================================================================ --}}
+    {{-- MODALS                                                            --}}
+    {{-- WAJIB di luar semua <div class="card"> dan struktur tabel!       --}}
+    {{-- Di-render SEKALI per MK unik via $allRenderedMks (dedup).        --}}
+    {{-- ================================================================ --}}
     @foreach ($allRenderedMks as $mk)
         @include('matakuliah.partials.detail-matkul', ['m' => $mk])
         @include('matakuliah.partials.delete-matkul', ['m' => $mk])
     @endforeach
 
-    {{-- Modal Tambah --}}
     @can('kurikulum-create')
-        @include('matakuliah.partials.create-matkul', ['dosen' => $dosen, 'prodi' => $allProdi])
+        @include('matakuliah.partials.create-matkul', [
+            'dosen' => $dosen,
+            'prodi' => $allProdi,
+        ])
     @endcan
 
-    {{-- Modal Edit Global --}}
     @can('kurikulum-update')
-        @include('matakuliah.partials.edit-matkul', ['dosen' => $dosen, 'prodi' => $allProdi])
+        @include('matakuliah.partials.edit-matkul', [
+            'dosen' => $dosen,
+            'prodi' => $allProdi,
+        ])
     @endcan
 @endsection
 
 @push('scripts')
     <script>
         $(document).ready(function() {
+            // Aktifkan tooltips Bootstrap
             $('[title]').tooltip({
                 trigger: 'hover'
+            });
+
+            // ── Edit MK via AJAX ──────────────────────────────────────────
+            $(document).on('click', '.btn-open-edit-matkul', function() {
+                const mkId = $(this).data('id');
+                const url = '{{ route('matakuliah.edit-data', ':id') }}'.replace(':id', mkId);
+                const $modal = $('#modalEditMatkul');
+
+                if (!$modal.length) return;
+
+                $.get(url, function(data) {
+                    $modal.find('#edit_mk_id').val(data.id);
+                    $modal.find('#edit_kode_mk').val(data.kode_mk);
+                    $modal.find('#edit_nama_mk').val(data.nama_mk);
+                    $modal.find('#edit_bobot').val(data.bobot);
+                    $modal.find('#edit_jenis').val(data.jenis).trigger('change');
+                    $modal.find('#edit_id_dosen').val(data.id_dosen).trigger('change');
+
+                    // Refresh mapping rows (jika ada dynamic mapping UI)
+                    if (typeof populateEditMappings === 'function') {
+                        populateEditMappings(data.mappings);
+                    }
+
+                    $modal.modal('show');
+                }).fail(function() {
+                    alert('Gagal memuat data mata kuliah. Silakan coba lagi.');
+                });
             });
         });
     </script>

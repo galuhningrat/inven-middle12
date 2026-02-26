@@ -1,0 +1,263 @@
+{{-- Modal Tambah Mata Kuliah --}}
+{{-- Required: $dosen, $allProdi --}}
+<div class="modal fade" id="modalTambahMK" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <form id="formTambahMK" method="POST" action="{{ route('matakuliah.store') }}">
+                @csrf
+                <input type="hidden" name="ajax" value="1">
+
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold text-gray-900">
+                        <i class="ki-duotone ki-plus-circle fs-2 text-primary me-2"><span class="path1"></span><span
+                                class="path2"></span></i>
+                        Tambah Mata Kuliah Baru
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="row g-5">
+                        {{-- Info Mata Kuliah --}}
+                        <div class="col-md-5">
+                            <div class="card card-flush border border-dashed">
+                                <div class="card-header min-h-50px">
+                                    <h6 class="card-title fw-bold text-gray-700 fs-7">Informasi Mata Kuliah</h6>
+                                </div>
+                                <div class="card-body pt-3 pb-4">
+
+                                    <div class="mb-4">
+                                        <label class="form-label fw-semibold fs-7 required">Kode MK</label>
+                                        <input type="text" name="kode_mk"
+                                            class="form-control form-control-sm font-monospace text-uppercase @error('kode_mk') is-invalid @enderror"
+                                            placeholder="Contoh: MKU101" maxlength="15" value="{{ old('kode_mk') }}">
+                                        @error('kode_mk')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label class="form-label fw-semibold fs-7 required">Nama Mata Kuliah</label>
+                                        <input type="text" name="nama_mk"
+                                            class="form-control form-control-sm @error('nama_mk') is-invalid @enderror"
+                                            placeholder="Nama lengkap mata kuliah" maxlength="100"
+                                            value="{{ old('nama_mk') }}">
+                                        @error('nama_mk')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+                                    <div class="row g-3 mb-4">
+                                        <div class="col-6">
+                                            <label class="form-label fw-semibold fs-7 required">Bobot SKS</label>
+                                            <select name="bobot"
+                                                class="form-select form-select-sm @error('bobot') is-invalid @enderror">
+                                                @for ($i = 1; $i <= 9; $i++)
+                                                    <option value="{{ $i }}"
+                                                        {{ old('bobot') == $i ? 'selected' : '' }}>{{ $i }}
+                                                        SKS</option>
+                                                @endfor
+                                            </select>
+                                            @error('bobot')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label fw-semibold fs-7 required">Jenis MK</label>
+                                            <select name="jenis"
+                                                class="form-select form-select-sm @error('jenis') is-invalid @enderror">
+                                                <option value="wajib" {{ old('jenis') === 'wajib' ? 'selected' : '' }}>
+                                                    Wajib</option>
+                                                <option value="pilihan"
+                                                    {{ old('jenis') === 'pilihan' ? 'selected' : '' }}>Pilihan</option>
+                                                <option value="umum" {{ old('jenis') === 'umum' ? 'selected' : '' }}>
+                                                    Umum (MKU)</option>
+                                            </select>
+                                            @error('jenis')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-0">
+                                        <label class="form-label fw-semibold fs-7 required">Dosen Pengampu</label>
+                                        <select name="id_dosen"
+                                            class="form-select form-select-sm @error('id_dosen') is-invalid @enderror">
+                                            <option value="">-- Pilih Dosen --</option>
+                                            @foreach ($dosen as $d)
+                                                <option value="{{ $d->id }}"
+                                                    {{ old('id_dosen') == $d->id ? 'selected' : '' }}>
+                                                    {{ $d->user->nama ?? 'Dosen #' . $d->id }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @error('id_dosen')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Mapping Prodi & Semester --}}
+                        <div class="col-md-7">
+                            <div class="card card-flush border border-dashed">
+                                <div class="card-header min-h-50px">
+                                    <h6 class="card-title fw-bold text-gray-700 fs-7">Mapping Prodi & Semester</h6>
+                                    <div class="card-toolbar">
+                                        <button type="button" id="btn-add-mapping-tambah"
+                                            class="btn btn-sm btn-light-primary py-1 px-3">
+                                            <i class="ki-duotone ki-plus fs-5 me-1"><span class="path1"></span><span
+                                                    class="path2"></span></i>
+                                            Tambah Baris
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-body pt-3 pb-4">
+                                    <div class="row g-1 mb-2 text-muted fw-semibold fs-8">
+                                        <div class="col-5">Program Studi</div>
+                                        <div class="col-3">Semester</div>
+                                        <div class="col-3">Angkatan</div>
+                                        <div class="col-1"></div>
+                                    </div>
+                                    <div id="tambah-mapping-rows"></div>
+                                    @error('mappings')
+                                        <div class="text-danger fs-8 mt-1">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer py-3">
+                    <button type="button" class="btn btn-sm btn-light" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" id="btnSaveTambahMK" class="btn btn-sm btn-primary">
+                        <i class="ki-duotone ki-check fs-4 me-2"><span class="path1"></span><span
+                                class="path2"></span></i>
+                        Simpan Mata Kuliah
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+    <script>
+        $(document).ready(function() {
+
+            const allProdiTambah = @json($allProdi->map(fn($p) => ['id' => $p->id, 'nama' => $p->nama_prodi]));
+
+            function addTambahMappingRow(prodiId = '', semester = '', angkatan = '') {
+                const idx = Date.now() + Math.random();
+                let prodiSelect =
+                    `<select name="mappings[${idx}][prodi_id]" class="form-select form-select-sm"><option value="">-- Pilih Prodi --</option>`;
+                allProdiTambah.forEach(p => {
+                    prodiSelect +=
+                        `<option value="${p.id}" ${p.id == prodiId ? 'selected' : ''}>${p.nama}</option>`;
+                });
+                prodiSelect += '</select>';
+
+                let semSelect =
+                    `<select name="mappings[${idx}][semester]" class="form-select form-select-sm"><option value="">-- Semester --</option>`;
+                for (let i = 1; i <= 14; i++) {
+                    semSelect += `<option value="${i}" ${i == semester ? 'selected' : ''}>Semester ${i}</option>`;
+                }
+                semSelect += '</select>';
+
+                $('#tambah-mapping-rows').append(`
+            <div class="row g-2 mb-2 mapping-row-tambah">
+                <div class="col-5">${prodiSelect}</div>
+                <div class="col-3">${semSelect}</div>
+                <div class="col-3">
+                    <input type="text" name="mappings[${idx}][angkatan]"
+                        class="form-control form-control-sm"
+                        placeholder="Angkatan" maxlength="4"
+                        value="${angkatan ?? ''}">
+                </div>
+                <div class="col-1">
+                    <button type="button" class="btn btn-icon btn-light-danger btn-sm w-100 btn-remove-tambah-mapping">
+                        <i class="ki-duotone ki-trash fs-6"><span class="path1"></span><span class="path2"></span><span class="path3"></span><span class="path4"></span><span class="path5"></span></i>
+                    </button>
+                </div>
+            </div>`);
+            }
+
+            // Init: add one empty row on modal show
+            $('#modalTambahMK').on('show.bs.modal', function() {
+                $('#tambah-mapping-rows').empty();
+                addTambahMappingRow();
+                $('#formTambahMK')[0].reset();
+                // Re-trigger select reset
+                $('#formTambahMK select').val('');
+            });
+
+            $('#btn-add-mapping-tambah').on('click', function() {
+                addTambahMappingRow();
+            });
+
+            $(document).on('click', '.btn-remove-tambah-mapping', function() {
+                if ($('.mapping-row-tambah').length > 1) {
+                    $(this).closest('.mapping-row-tambah').remove();
+                } else {
+                    Swal.fire('Perhatian', 'Minimal satu mapping harus ada.', 'warning');
+                }
+            });
+
+            // Submit tambah
+            $('#formTambahMK').on('submit', function(e) {
+                e.preventDefault();
+                const form = $(this);
+                const btn = $('#btnSaveTambahMK');
+                btn.prop('disabled', true).html(
+                    '<span class="spinner-border spinner-border-sm me-2"></span>Menyimpan...');
+                form.find('.is-invalid').removeClass('is-invalid');
+                form.find('.invalid-feedback').remove();
+
+                $.ajax({
+                    url: form.attr('action'),
+                    method: 'POST',
+                    data: form.serialize(),
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    },
+                    success: function(res) {
+                        bootstrap.Modal.getInstance(document.getElementById('modalTambahMK'))
+                            .hide();
+                        Swal.fire({
+                                icon: 'success',
+                                title: 'Berhasil!',
+                                text: res.message ?? 'Mata kuliah berhasil ditambahkan.',
+                                timer: 2000,
+                                showConfirmButton: false
+                            })
+                            .then(() => {
+                                if (typeof fetchTable === 'function') fetchTable();
+                                else location.reload();
+                            });
+                    },
+                    error: function(xhr) {
+                        btn.prop('disabled', false).html(
+                            '<i class="ki-duotone ki-check fs-4 me-2"><span class="path1"></span><span class="path2"></span></i>Simpan Mata Kuliah'
+                            );
+                        if (xhr.status === 422) {
+                            const errors = xhr.responseJSON?.errors || {};
+                            Object.keys(errors).forEach(field => {
+                                const input = form.find(`[name="${field}"]`);
+                                if (input.length) {
+                                    input.addClass('is-invalid').after(
+                                        `<div class="invalid-feedback">${errors[field][0]}</div>`
+                                        );
+                                }
+                            });
+                        } else {
+                            Swal.fire('Error', 'Gagal menyimpan mata kuliah.', 'error');
+                        }
+                    }
+                });
+            });
+        });
+    </script>
+@endpush
