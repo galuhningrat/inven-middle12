@@ -7,6 +7,7 @@ use App\Models\Fakultas;
 use App\Models\Prodi;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ProdiController extends Controller
 {
@@ -36,6 +37,10 @@ class ProdiController extends Controller
             'id_kaprodi' => 'required|exists:users,id',
             'status_akre' => 'required|in:Unggul,Baik Sekali,Baik'
         ]);
+
+        if (DB::connection()->getDriverName() === 'pgsql') {
+            DB::statement("SELECT setval(pg_get_serial_sequence('prodi', 'id'), coalesce(max(id),0) + 1, false) FROM prodi");
+        }
 
         Prodi::create([
             'kode_prodi' => $request->kode_prodi,
@@ -83,8 +88,7 @@ class ProdiController extends Controller
     {
         $prodi = Prodi::findOrFail($id);
 
-        // 1. Cek relasi ke Rombel (Ini yang menyebabkan error tadi)
-        // Jika modelnya bukan \App\Models\Rombel, sesuaikan namespace-nya
+        // 1. Cek relasi ke Rombel
         $hasRombel = \App\Models\Rombel::where('id_prodi', $id)->exists();
 
         // 2. Cek juga relasi ke Mahasiswa (jika ada)

@@ -3,16 +3,20 @@
 @section('toolbar')
     <div class="toolbar" id="kt_toolbar">
         <div id="kt_toolbar_container" class="container-fluid d-flex flex-stack">
-            <div class="page-title d-flex align-items-center flex-wrap me-3 mb-3 mb-lg-0">
-                <h1 class="d-flex align-items-center text-dark fw-bolder fs-5 my-1">Kurikulum Mata Kuliah</h1>
-                <span class="h-20px border-gray-200 border-start mx-3"></span>
+            <div data-kt-swapper="true" data-kt-swapper-mode="prepend"
+                data-kt-swapper-parent="{default: '#kt_content_container', 'lg': '#kt_toolbar_container'}"
+                class="page-title d-flex align-items-center flex-wrap me-3 mb-5 mb-lg-0">
+                <h1 class="d-flex align-items-center text-dark fw-bolder fs-3 my-1">Kurikulum Mata Kuliah</h1>
+                <span class="h-20px border-gray-200 border-start mx-4"></span>
             </div>
             <div class="d-flex align-items-center py-1">
-                <ul class="breadcrumb breadcrumb-separatorless fw-bold fs-8 my-1">
+                <ul class="breadcrumb breadcrumb-separatorless fw-bold fs-7 my-1">
                     <li class="breadcrumb-item text-muted">
                         <a href="/dashboard" class="text-muted text-hover-primary">Dashboard</a>
                     </li>
-                    <li class="breadcrumb-item"><span class="bullet bg-gray-200 w-5px h-2px"></span></li>
+                    <li class="breadcrumb-item">
+                        <span class="bullet bg-gray-200 w-5px h-2px"></span>
+                    </li>
                     <li class="breadcrumb-item text-dark">Kurikulum Mata Kuliah</li>
                 </ul>
             </div>
@@ -21,6 +25,17 @@
 @endsection
 
 @section('content')
+    {{--
+        ╔═══════════════════════════════════════════════════════════════════════╗
+        ║  $allRenderedMks — Collection kosong yang diisi oleh partial          ║
+        ║  semester-accordion.blade.php saat merender setiap baris MK.         ║
+        ║                                                                       ║
+        ║  BUG FIX: partial WAJIB memanggil $allRenderedMks->push($mk)         ║
+        ║  agar loop @foreach di bawah bisa merender modal Detail & Hapus.     ║
+        ║  Karena Collection adalah object PHP, ia diteruskan by-reference      ║
+        ║  ke partial sehingga perubahan di dalam partial terlihat di sini.     ║
+        ╚═══════════════════════════════════════════════════════════════════════╝
+    --}}
     @php $allRenderedMks = collect(); @endphp
 
     <div class="post d-flex flex-column-fluid" id="kt_post">
@@ -97,7 +112,6 @@
                     <form method="GET" action="{{ route('matakuliah.index') }}"
                         class="d-flex flex-wrap gap-2 align-items-end">
 
-                        {{-- Cari MK --}}
                         <div style="min-width:180px;max-width:260px;flex-grow:1">
                             <label class="form-label fw-semibold fs-8 mb-1">Cari Mata Kuliah</label>
                             <div class="input-group input-group-sm">
@@ -109,7 +123,6 @@
                             </div>
                         </div>
 
-                        {{-- Filter Prodi --}}
                         <div style="min-width:150px">
                             <label class="form-label fw-semibold fs-8 mb-1">Program Studi</label>
                             <select name="filter_prodi" class="form-select form-select-sm">
@@ -123,7 +136,6 @@
                             </select>
                         </div>
 
-                        {{-- Filter Rombel --}}
                         <div style="min-width:160px">
                             <label class="form-label fw-semibold fs-8 mb-1">Rombel / Angkatan</label>
                             <select name="filter_rombel" class="form-select form-select-sm">
@@ -140,7 +152,6 @@
                             </select>
                         </div>
 
-                        {{-- Filter Semester --}}
                         <div style="min-width:130px">
                             <label class="form-label fw-semibold fs-8 mb-1">Semester</label>
                             <select name="filter_semester" class="form-select form-select-sm">
@@ -154,7 +165,6 @@
                             </select>
                         </div>
 
-                        {{-- Tombol Filter --}}
                         <div class="d-flex gap-1 align-self-end">
                             <button type="submit" class="btn btn-sm btn-primary px-3">
                                 <i class="bi bi-funnel me-1"></i>Filter
@@ -164,7 +174,6 @@
                             </a>
                         </div>
 
-                        {{-- Aksi kanan --}}
                         <div class="ms-auto d-flex gap-2 align-items-end">
                             @can('kurikulum-create')
                                 <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal"
@@ -193,7 +202,7 @@
                     </div>
                 </div>
             @else
-                {{-- ── LEVEL 1 — FAKULTAS : Nav-Tabs ────────────────────────── --}}
+                {{-- ── LEVEL 1 — FAKULTAS : Nav-Tabs ─────────────────────────── --}}
                 <div class="card">
                     <div class="card-header border-0 pt-3 pb-0" style="min-height:auto">
                         <ul class="nav nav-tabs nav-line-tabs nav-line-tabs-2x border-0 fs-7 fw-bold" id="tabFakultas"
@@ -220,7 +229,6 @@
                         <div class="tab-content" id="tabFakultasContent">
 
                             @foreach ($fakultas as $fi => $fak)
-                                {{-- ── TAB PANE FAKULTAS ──────────────────────────────── --}}
                                 <div class="tab-pane fade {{ $fi === 0 ? 'show active' : '' }}"
                                     id="pane-fak-{{ $fak->id }}" role="tabpanel"
                                     aria-labelledby="tab-fak-{{ $fak->id }}">
@@ -231,10 +239,10 @@
                                             <p class="fs-8 mb-0">Belum ada program studi di fakultas ini.</p>
                                         </div>
                                     @else
-                                        {{-- ── LEVEL 2 — PRODI : Nav-Pills vertikal ──────── --}}
+                                        {{-- ── LEVEL 2 — PRODI : Nav-Pills vertikal ─────── --}}
                                         <div class="d-flex gap-4 align-items-start">
 
-                                            {{-- Sidebar Nav-Pills Prodi —  lebih ramping --}}
+                                            {{-- Sidebar Nav-Pills Prodi --}}
                                             <div class="flex-shrink-0" style="width:200px;min-width:160px">
                                                 <div class="nav flex-column nav-pills gap-1"
                                                     id="pills-prodi-{{ $fak->id }}" role="tablist"
@@ -249,7 +257,6 @@
                                                             type="button" role="tab"
                                                             aria-controls="pane-prodi-{{ $prodi->id }}"
                                                             aria-selected="{{ $pi === 0 ? 'true' : 'false' }}">
-
                                                             <span
                                                                 class="d-flex flex-column align-items-start w-100 overflow-hidden">
                                                                 <span
@@ -257,15 +264,15 @@
                                                                     {{ $prodi->nama_prodi }}
                                                                 </span>
                                                                 <span class="fs-9 text-gray-500 mt-0">
-                                                                    <span class="text-primary fw-bold">
-                                                                        {{ $statsByProdi[$prodi->id]['total'] ?? 0 }}
-                                                                    </span> MK &bull;
-                                                                    <span class="text-success fw-bold">
-                                                                        {{ $statsByProdi[$prodi->id]['total_sks'] ?? 0 }}
-                                                                    </span> SKS &bull;
-                                                                    <span class="text-warning fw-bold">
-                                                                        {{ $prodi->rombel->count() }}
-                                                                    </span> Rombel
+                                                                    <span
+                                                                        class="text-primary fw-bold">{{ $statsByProdi[$prodi->id]['total'] ?? 0 }}</span>
+                                                                    MK &bull;
+                                                                    <span
+                                                                        class="text-success fw-bold">{{ $statsByProdi[$prodi->id]['total_sks'] ?? 0 }}</span>
+                                                                    SKS &bull;
+                                                                    <span
+                                                                        class="text-warning fw-bold">{{ $prodi->rombel->count() }}</span>
+                                                                    Rombel
                                                                 </span>
                                                             </span>
                                                             <i
@@ -275,19 +282,17 @@
 
                                                 </div>
                                             </div>
-                                            {{-- end sidebar Prodi --}}
 
                                             {{-- Konten Prodi --}}
                                             <div class="flex-grow-1 min-w-0">
                                                 <div class="tab-content" id="pills-prodi-content-{{ $fak->id }}">
 
                                                     @foreach ($fak->prodi as $pi => $prodi)
-                                                        {{-- ── TAB PANE PRODI ────────────────────────── --}}
                                                         <div class="tab-pane fade {{ $pi === 0 ? 'show active' : '' }}"
                                                             id="pane-prodi-{{ $prodi->id }}" role="tabpanel"
                                                             aria-labelledby="pill-prodi-{{ $prodi->id }}">
 
-                                                            {{-- Header Info Prodi — kompak --}}
+                                                            {{-- Header Info Prodi --}}
                                                             <div
                                                                 class="d-flex align-items-center mb-3 pb-3 border-bottom border-dashed">
                                                                 <div class="flex-grow-1">
@@ -313,7 +318,6 @@
                                                                         @endif
                                                                     </div>
                                                                 </div>
-                                                                {{-- Stats ringkas --}}
                                                                 <div class="d-flex gap-3 text-center ms-3 flex-shrink-0">
                                                                     <div>
                                                                         <div class="fs-3 fw-bolder text-primary lh-1">
@@ -337,7 +341,6 @@
                                                                     </div>
                                                                 </div>
                                                             </div>
-                                                            {{-- end header Prodi --}}
 
                                                             @if ($prodi->rombel->isEmpty())
                                                                 @php
@@ -387,7 +390,7 @@
                                                                     )
                                                                 @endif
                                                             @else
-                                                                {{-- ── LEVEL 3 — ROMBEL : Accordion ─────── --}}
+                                                                {{-- ── LEVEL 3 — ROMBEL : Accordion ──────── --}}
                                                                 <div class="accordion accordion-icon-collapse"
                                                                     id="acc-rombel-prodi-{{ $prodi->id }}">
 
@@ -422,7 +425,6 @@
                                                                                 : 'Angkatan —';
                                                                         @endphp
 
-                                                                        {{-- ── ACCORDION ITEM ROMBEL ───────────── --}}
                                                                         <div
                                                                             class="accordion-item mb-2 border rounded-2 shadow-sm">
 
@@ -440,15 +442,12 @@
                                                                                     <div
                                                                                         class="d-flex align-items-center w-100 me-3 gap-2">
 
-                                                                                        {{-- Avatar Rombel — lebih kecil --}}
                                                                                         <div
-                                                                                            class="d-flex flex-center w-30px h-30px
-                                                                                                    rounded-circle bg-primary flex-shrink-0">
+                                                                                            class="d-flex flex-center w-30px h-30px rounded-circle bg-primary flex-shrink-0">
                                                                                             <i
                                                                                                 class="bi bi-people-fill text-white fs-8"></i>
                                                                                         </div>
 
-                                                                                        {{-- Info Rombel --}}
                                                                                         <div class="flex-grow-1 min-w-0">
                                                                                             <div
                                                                                                 class="fw-bold text-gray-800 fs-7 d-flex align-items-center gap-2">
@@ -477,7 +476,6 @@
                                                                                             </div>
                                                                                         </div>
 
-                                                                                        {{-- Badge Summary — lebih ringkas --}}
                                                                                         <div
                                                                                             class="d-flex gap-1 ms-auto flex-shrink-0">
                                                                                             <span
@@ -502,7 +500,6 @@
                                                                                 </button>
                                                                             </h2>
 
-                                                                            {{-- ── BODY ROMBEL ─────────────────── --}}
                                                                             <div id="{{ $rombelPaneId }}"
                                                                                 class="accordion-collapse collapse {{ $ri === 0 ? 'show' : '' }}"
                                                                                 aria-labelledby="hd-{{ $rombelPaneId }}"
@@ -516,13 +513,16 @@
                                                                                                 class="bi bi-inbox fs-2x text-gray-300 d-block mb-2"></i>
                                                                                             <p class="fs-8 mb-0">
                                                                                                 Belum ada mata kuliah yang
-                                                                                                dipetakan
-                                                                                                ke Prodi
+                                                                                                dipetakan ke Prodi
                                                                                                 <strong>{{ $prodi->nama_prodi }}</strong>.
                                                                                             </p>
                                                                                         </div>
                                                                                     @else
-                                                                                        {{-- LEVEL 4 — SEMESTER & LEVEL 5 — MK --}}
+                                                                                        {{--
+                                                                                            LEVEL 4 — SEMESTER & LEVEL 5 — MK
+                                                                                            Partial ini yang mengisi $allRenderedMks
+                                                                                            via $allRenderedMks->push($mk)
+                                                                                        --}}
                                                                                         @include(
                                                                                             'matakuliah.partials.semester-accordion',
                                                                                             [
@@ -538,11 +538,9 @@
                                                                             </div>
 
                                                                         </div>
-                                                                        {{-- end accordion-item Rombel --}}
                                                                     @endforeach
 
                                                                 </div>
-                                                                {{-- end accordion Rombel --}}
                                                             @endif
 
                                                         </div>
@@ -550,11 +548,9 @@
                                                     @endforeach
 
                                                 </div>
-                                                {{-- end tab-content Prodi --}}
                                             </div>
 
                                         </div>
-                                        {{-- end d-flex Prodi --}}
                                     @endif
 
                                 </div>
@@ -562,7 +558,6 @@
                             @endforeach
 
                         </div>
-                        {{-- end tab-content Fakultas --}}
                     </div>
                 </div>
             @endif
@@ -571,59 +566,66 @@
     </div>
 
     {{-- ================================================================ --}}
-    {{-- MODALS                                                            --}}
+    {{-- MODALS — di luar semua struktur tabel/accordion                  --}}
+    {{--                                                                  --}}
+    {{-- $allRenderedMks sudah diisi oleh semester-accordion.blade.php    --}}
+    {{-- via $allRenderedMks->push($mk). Loop ini merender modal          --}}
+    {{-- Detail dan Hapus untuk setiap MK unik yang tampil di halaman.   --}}
     {{-- ================================================================ --}}
     @foreach ($allRenderedMks as $mk)
         @include('matakuliah.partials.detail-matkul', ['m' => $mk])
         @include('matakuliah.partials.delete-matkul', ['m' => $mk])
     @endforeach
 
-    @can('kurikulum-create')
-        @include('matakuliah.partials.create-matkul', [
-            'dosen' => $dosen,
-            'prodi' => $allProdi,
-        ])
-    @endcan
+    {{--
+        ╔══════════════════════════════════════════════════════════════════════╗
+        ║  KENAPA TIDAK PAKAI @can DI SINI?                                   ║
+        ║                                                                      ║
+        ║  Aplikasi ini memakai custom middleware 'permission:kurikulum,X'    ║
+        ║  yang mengecek tabel `permissions` sendiri — bukan Laravel Gate.    ║
+        ║  Directive @can('kurikulum-update') memanggil Gate::check() yang    ║
+        ║  tidak pernah terdaftar → selalu false → modal TIDAK ter-render     ║
+        ║  → tombol Edit diklik → tidak ada modal → diam saja.                ║
+        ║                                                                      ║
+        ║  Security TETAP aman: route update dilindungi controller middleware. ║
+        ║  Modal ada di DOM ≠ bypass security. Request tetap ditolak server   ║
+        ║  jika user tidak punya permission.                                   ║
+        ║                                                                      ║
+        ║  Referensi: all-data.blade.php include edit modal tanpa @can         ║
+        ║  dan berfungsi normal.                                               ║
+        ╚══════════════════════════════════════════════════════════════════════╝
+    --}}
+    @include('matakuliah.partials.create-matkul', [
+        'dosen' => $dosen,
+        'prodi' => $allProdi,
+    ])
 
-    @can('kurikulum-update')
-        @include('matakuliah.partials.edit-matkul', [
-            'dosen' => $dosen,
-            'prodi' => $allProdi,
-        ])
-    @endcan
+    @include('matakuliah.partials.edit-matkul', [
+        'dosen' => $dosen,
+        'prodi' => $allProdi,
+    ])
 @endsection
 
 @push('scripts')
     <script>
         $(document).ready(function() {
+            // Aktifkan tooltips Bootstrap untuk semua elemen ber-title
             $('[title]').tooltip({
                 trigger: 'hover'
             });
 
-            $(document).on('click', '.btn-open-edit-matkul', function() {
-                const mkId = $(this).data('id');
-                const url = '{{ route('matakuliah.edit-data', ':id') }}'.replace(':id', mkId);
-                const $modal = $('#modalEditMatkul');
+            {{--
+                CATATAN PENTING:
+                Handler untuk tombol Edit (.btn-open-edit-matkul) TIDAK didefinisikan
+                di sini. Handler tersebut sudah ada secara lengkap di dalam
+                matakuliah/partials/edit-matkul.blade.php dan membuka modal
+                #modalEditMatkulGlobal dengan benar.
 
-                if (!$modal.length) return;
-
-                $.get(url, function(data) {
-                    $modal.find('#edit_mk_id').val(data.id);
-                    $modal.find('#edit_kode_mk').val(data.kode_mk);
-                    $modal.find('#edit_nama_mk').val(data.nama_mk);
-                    $modal.find('#edit_bobot').val(data.bobot);
-                    $modal.find('#edit_jenis').val(data.jenis).trigger('change');
-                    $modal.find('#edit_id_dosen').val(data.id_dosen).trigger('change');
-
-                    if (typeof populateEditMappings === 'function') {
-                        populateEditMappings(data.mappings);
-                    }
-
-                    $modal.modal('show');
-                }).fail(function() {
-                    alert('Gagal memuat data mata kuliah. Silakan coba lagi.');
-                });
-            });
+                Mendefinisikan handler kedua di sini sebelumnya menyebabkan dua bug:
+                  1. Mencari $('#modalEditMatkul') — ID yang salah (seharusnya #modalEditMatkulGlobal)
+                  2. Selalu return lebih awal karena modal tidak ditemukan
+                  3. Konflik event listener sehingga handler asli tidak berjalan
+            --}}
         });
     </script>
 @endpush

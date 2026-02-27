@@ -39,16 +39,16 @@
             {{-- ============================================================ --}}
             {{-- STATS CARDS                                                   --}}
             {{-- ============================================================ --}}
-            <div class="row g-4 mb-5">
+            <div class="row g-3 mb-3">
                 <div class="col-sm-6 col-xl-3">
                     <div class="card h-100">
-                        <div class="card-body d-flex align-items-center p-4">
+                        <div class="card-body d-flex align-items-center p-3">
                             <div
-                                class="d-flex flex-center w-45px h-45px rounded-circle bg-light-primary me-3 flex-shrink-0">
-                                <i class="bi bi-book-fill fs-3 text-primary"></i>
+                                class="d-flex flex-center w-35px h-35px rounded-circle bg-light-primary me-3 flex-shrink-0">
+                                <i class="bi bi-book-fill fs-5 text-primary"></i>
                             </div>
                             <div>
-                                <div class="fs-2hx fw-bold text-gray-800 lh-1" id="stat-total">{{ $matakuliah->count() }}
+                                <div class="fs-2x fw-bold text-gray-800 lh-1" id="stat-total">{{ $matakuliah->count() }}
                                 </div>
                                 <div class="fs-8 fw-semibold text-gray-500">Total Mata Kuliah</div>
                             </div>
@@ -57,12 +57,12 @@
                 </div>
                 <div class="col-sm-6 col-xl-3">
                     <div class="card h-100">
-                        <div class="card-body d-flex align-items-center p-4">
-                            <div class="d-flex flex-center w-45px h-45px rounded-circle bg-light-danger me-3 flex-shrink-0">
-                                <i class="bi bi-exclamation-triangle-fill fs-3 text-danger"></i>
+                        <div class="card-body d-flex align-items-center p-3">
+                            <div class="d-flex flex-center w-35px h-35px rounded-circle bg-light-danger me-3 flex-shrink-0">
+                                <i class="bi bi-exclamation-triangle-fill fs-5 text-danger"></i>
                             </div>
                             <div>
-                                <div class="fs-2hx fw-bold text-gray-800 lh-1">{{ $totalOrphan }}</div>
+                                <div class="fs-2x fw-bold text-gray-800 lh-1">{{ $totalOrphan }}</div>
                                 <div class="fs-8 fw-semibold text-gray-500">MK Belum Dipetakan</div>
                             </div>
                         </div>
@@ -70,13 +70,13 @@
                 </div>
                 <div class="col-sm-6 col-xl-3">
                     <div class="card h-100">
-                        <div class="card-body d-flex align-items-center p-4">
+                        <div class="card-body d-flex align-items-center p-3">
                             <div
-                                class="d-flex flex-center w-45px h-45px rounded-circle bg-light-success me-3 flex-shrink-0">
-                                <i class="bi bi-mortarboard-fill fs-3 text-success"></i>
+                                class="d-flex flex-center w-35px h-35px rounded-circle bg-light-success me-3 flex-shrink-0">
+                                <i class="bi bi-mortarboard-fill fs-5 text-success"></i>
                             </div>
                             <div>
-                                <div class="fs-2hx fw-bold text-gray-800 lh-1">{{ $prodi->count() }}</div>
+                                <div class="fs-2x fw-bold text-gray-800 lh-1">{{ $prodi->count() }}</div>
                                 <div class="fs-8 fw-semibold text-gray-500">Program Studi</div>
                             </div>
                         </div>
@@ -84,13 +84,13 @@
                 </div>
                 <div class="col-sm-6 col-xl-3">
                     <div class="card h-100">
-                        <div class="card-body d-flex align-items-center p-4">
+                        <div class="card-body d-flex align-items-center p-3">
                             <div
-                                class="d-flex flex-center w-45px h-45px rounded-circle bg-light-warning me-3 flex-shrink-0">
-                                <i class="bi bi-person-badge-fill fs-3 text-warning"></i>
+                                class="d-flex flex-center w-35px h-35px rounded-circle bg-light-warning me-3 flex-shrink-0">
+                                <i class="bi bi-person-badge-fill fs-5 text-warning"></i>
                             </div>
                             <div>
-                                <div class="fs-2hx fw-bold text-gray-800 lh-1">{{ $dosen->count() }}</div>
+                                <div class="fs-2x fw-bold text-gray-800 lh-1">{{ $dosen->count() }}</div>
                                 <div class="fs-8 fw-semibold text-gray-500">Dosen Pengampu</div>
                             </div>
                         </div>
@@ -103,8 +103,8 @@
             {{-- halaman Data Pengguna agar search Metronic auto-aktif         --}}
             {{-- ============================================================ --}}
             <div class="card">
-                <div class="card-header border-0 pt-6">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center w-100 gap-3">
+                <div class="card-header border-0 pt-4 pb-2">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center w-100 gap-2">
 
                         {{-- Placeholder search Metronic (sama persis dengan user.blade.php) --}}
                         <div id="custom-search-container" class="mb-2 mb-md-0"></div>
@@ -112,7 +112,7 @@
                         {{-- Filter tambahan: Prodi, Semester, Jenis --}}
                         <div class="d-flex flex-wrap align-items-center gap-2">
 
-                            <select id="filterProdi" class="form-select form-select-sm" style="min-width:170px">
+                            {{-- <select id="filterProdi" class="form-select form-select-sm" style="min-width:170px">
                                 <option value="">Semua Prodi</option>
                                 @foreach ($prodi as $p)
                                     <option value="{{ $p->nama_prodi }}">{{ $p->nama_prodi }}</option>
@@ -131,27 +131,27 @@
                                 <option value="Wajib">Wajib</option>
                                 <option value="Pilihan">Pilihan</option>
                                 <option value="MKU">MKU</option>
-                            </select>
+                            </select> --}}
 
-                            <button type="button" id="btnResetFilter" class="btn btn-sm btn-light">
+                            {{-- <button type="button" id="btnResetFilter" class="btn btn-sm btn-light">
                                 <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
-                            </button>
+                            </button> --}}
 
                             <div id="custom-button-container" class="d-flex gap-2 flex-wrap align-items-center"></div>
 
                             <a href="{{ route('matakuliah.index') }}" class="btn btn-sm btn-light-info">
-                                <i class="bi bi-diagram-3 me-1"></i>Lihat Kurikulum
+                                <i class="bi bi-diagram-3 me-1 fs-7"></i><span class="fs-8">Lihat Kurikulum</span>
                             </a>
 
                             <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal"
                                 data-bs-target="#modalTambahMatkul">
-                                <i class="bi bi-plus-lg me-1"></i>Tambah MK
+                                <i class="bi bi-plus-lg me-1 fs-7"></i><span class="fs-8">Tambah MK</span>
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <div class="card-body pt-0">
+                <div class="card-body pt-2 pb-3">
                     <div class="table-responsive">
                         {{--
                             KUNCI: id="tabel-custom"
@@ -159,17 +159,17 @@
                             dan menempatkan search input ke #custom-search-container
                         --}}
                         <table id="tabel-custom"
-                            class="table table-bordered table-striped table-sm align-middle fs-6 gy-2 w-100">
+                            class="table table-bordered table-striped table-sm align-middle fs-7 gy-1 w-100">
                             <thead class="bg-gray-100 text-gray-800 border-bottom border-gray-300">
-                                <tr class="fw-bold fs-6 text-uppercase">
-                                    <th class="text-center py-4 px-2 min-w-30px">No</th>
-                                    <th class="py-4 px-3 min-w-100px">Kode MK</th>
-                                    <th class="py-4 px-3 min-w-200px">Nama Mata Kuliah</th>
-                                    <th class="text-center py-4 px-2 min-w-60px">SKS</th>
-                                    <th class="text-center py-4 px-2 min-w-80px">Jenis</th>
-                                    <th class="py-4 px-3 min-w-150px">Dosen Pengampu</th>
-                                    <th class="py-4 px-3 min-w-180px">Mapping Prodi / Semester</th>
-                                    <th class="text-center py-4 px-2 min-w-120px">Aksi</th>
+                                <tr class="fw-bold fs-8 text-uppercase">
+                                    <th class="text-center py-2 px-2 min-w-30px">No</th>
+                                    <th class="py-2 px-2 min-w-100px">Kode MK</th>
+                                    <th class="py-2 px-2 min-w-200px">Nama Mata Kuliah</th>
+                                    <th class="text-center py-2 px-2 min-w-60px">SKS</th>
+                                    <th class="text-center py-2 px-2 min-w-80px">Jenis</th>
+                                    <th class="py-2 px-2 min-w-150px">Dosen Pengampu</th>
+                                    <th class="py-2 px-2 min-w-180px">Mapping Prodi / Semester</th>
+                                    <th class="text-center py-2 px-2 min-w-100px">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody class="text-gray-700 fw-semibold">
@@ -178,8 +178,7 @@
                                         <td class="text-center text-muted">{{ $i + 1 }}</td>
 
                                         <td>
-                                            <span
-                                                class="badge badge-light fw-bold text-dark font-monospace px-2 py-1 fs-8">
+                                            <span class="badge badge-light fw-bold text-dark font-monospace px-2 py-1 fs-8">
                                                 {{ $mk->kode_mk }}
                                             </span>
                                         </td>
@@ -214,14 +213,14 @@
 
                                         <td>
                                             @if ($mk->dosen && $mk->dosen->user)
-                                                <div class="d-flex align-items-center gap-2">
-                                                    <div class="symbol symbol-30px flex-shrink-0">
+                                                <div class="d-flex align-items-center gap-1">
+                                                    <div class="symbol symbol-25px flex-shrink-0">
                                                         <span
-                                                            class="symbol-label bg-light-success fw-bold text-success fs-8">
+                                                            class="symbol-label bg-light-success fw-bold text-success fs-9">
                                                             {{ strtoupper(substr($mk->dosen->user->nama, 0, 1)) }}
                                                         </span>
                                                     </div>
-                                                    <span class="text-truncate fw-semibold fs-7" style="max-width:145px">
+                                                    <span class="text-truncate fw-semibold fs-8" style="max-width:135px">
                                                         {{ $mk->dosen->user->nama }}
                                                     </span>
                                                 </div>
@@ -234,8 +233,8 @@
                                         <td>
                                             @if ($mk->prodiMappings->isNotEmpty())
                                                 @foreach ($mk->prodiMappings->sortBy('semester') as $mp)
-                                                    <div class="d-flex align-items-center gap-1 mb-1">
-                                                        <i class="bi bi-dot text-primary fs-5"></i>
+                                                    <div class="d-flex align-items-center gap-1">
+                                                        <i class="bi bi-dot text-primary fs-6"></i>
                                                         <span class="text-truncate fs-8" style="max-width:120px"
                                                             title="{{ $mp->prodi->nama_prodi ?? '-' }}">
                                                             {{ Str::limit($mp->prodi->nama_prodi ?? '-', 20) }}
@@ -253,26 +252,27 @@
                                         {{-- AKSI —tanpa @can agar selalu tampil --}}
                                         <td class="text-center">
                                             <button type="button" class="btn btn-icon btn-sm btn-light-primary me-1"
-                                                title="Detail" data-bs-toggle="modal"
+                                                style="width:26px;height:26px" title="Detail" data-bs-toggle="modal"
                                                 data-bs-target="#modalDetailMatkul{{ $mk->id }}">
-                                                <i class="bi bi-eye-fill fs-5"></i>
+                                                <i class="bi bi-eye-fill fs-7"></i>
                                             </button>
 
                                             <button type="button"
                                                 class="btn btn-icon btn-sm btn-light-success me-1 btn-open-edit-matkul"
-                                                title="Edit" data-id="{{ $mk->id }}"
+                                                style="width:26px;height:26px" title="Edit"
+                                                data-id="{{ $mk->id }}"
                                                 data-url="{{ route('matakuliah.update', $mk->id) }}"
                                                 data-kode="{{ $mk->kode_mk }}" data-nama="{{ $mk->nama_mk }}"
                                                 data-bobot="{{ $mk->bobot }}" data-jenis="{{ $mk->jenis }}"
                                                 data-id-dosen="{{ $mk->id_dosen }}"
                                                 data-mappings="{{ json_encode($mk->prodiMappings->map(fn($mp) => ['prodi_id' => $mp->id_prodi, 'semester' => $mp->semester])) }}">
-                                                <i class="bi bi-pencil-fill fs-5"></i>
+                                                <i class="bi bi-pencil-fill fs-7"></i>
                                             </button>
 
                                             <button type="button" class="btn btn-icon btn-sm btn-light-danger"
-                                                title="Hapus" data-bs-toggle="modal"
+                                                style="width:26px;height:26px" title="Hapus" data-bs-toggle="modal"
                                                 data-bs-target="#modalDeleteMatkul{{ $mk->id }}">
-                                                <i class="bi bi-trash-fill fs-5"></i>
+                                                <i class="bi bi-trash-fill fs-7"></i>
                                             </button>
                                         </td>
                                     </tr>

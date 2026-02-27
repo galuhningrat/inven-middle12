@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Fakultas;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB; // Tambahkan ini untuk menjalankan raw query
 
 class FakultasController extends Controller
 {
@@ -32,6 +33,12 @@ class FakultasController extends Controller
             'nama_fakultas' => 'required|string|max:50',
             'id_dekan' => 'required|exists:users,id',
         ]);
+
+        // EKSEKUSI PERBAIKAN SEQUENCE POSTGRESQL DI SINI
+        // Kode ini akan mereset ID sequence ke nilai maksimal yang ada di tabel saat ini
+        if (DB::connection()->getDriverName() === 'pgsql') {
+            DB::statement("SELECT setval(pg_get_serial_sequence('fakultas', 'id'), coalesce(max(id),0) + 1, false) FROM fakultas");
+        }
 
         Fakultas::create([
             'kode_fakultas' => $request->kode_fakultas,
