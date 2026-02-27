@@ -1,11 +1,6 @@
 {{--
     Partial: matakuliah/partials/semester-accordion.blade.php
-
-    Variabel WAJIB dari parent:
-      - $rombel  (model Rombel, harus punya kolom id_prodi)
-
-    Self-contained — $semester TIDAK perlu dikirim dari luar.
-    Data semester di-query dari pivot matkul_prodi_semester.
+    Versi kompak — padding/spacing dikurangi, font lebih kecil, tabel lebih rapat
 --}}
 
 @php
@@ -20,22 +15,22 @@
 @endphp
 
 @if ($mappingsBySemester->isEmpty())
-    <div class="text-center text-muted py-8">
+    <div class="text-center text-muted py-6">
         <i class="bi bi-inbox fs-2x d-block mb-2 text-gray-300"></i>
-        <div class="fs-7">Belum ada mata kuliah yang dipetakan ke prodi ini.</div>
+        <div class="fs-8">Belum ada mata kuliah yang dipetakan ke prodi ini.</div>
     </div>
 @else
     @foreach ($mappingsBySemester as $semester => $mappings)
-        <div class="mb-3">
-            {{-- Header Semester --}}
-            <div class="d-flex align-items-center justify-content-between py-3 px-4
+        <div class="mb-2">
+            {{-- Header Semester — lebih pipih --}}
+            <div class="d-flex align-items-center justify-content-between py-2 px-3
                         bg-light-primary rounded cursor-pointer"
                 data-bs-toggle="collapse" data-bs-target="#semCollapse-{{ $rombel->id }}-{{ $semester }}"
-                aria-expanded="true">
+                aria-expanded="true" style="cursor:pointer">
 
-                <div class="d-flex align-items-center gap-3">
-                    <span class="w-8px h-8px rounded-circle bg-primary d-inline-block"></span>
-                    <h6 class="fw-bold text-gray-800 mb-0">Semester {{ $semester }}</h6>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="w-6px h-6px rounded-circle bg-primary d-inline-block"></span>
+                    <h6 class="fw-bold text-gray-800 mb-0 fs-7">Semester {{ $semester }}</h6>
                 </div>
 
                 @php
@@ -43,7 +38,7 @@
                     $totalWajib = $mappings->filter(fn($m) => $m->matkul?->jenis === 'wajib')->count();
                 @endphp
 
-                <div class="d-flex align-items-center gap-3 text-muted fs-8">
+                <div class="d-flex align-items-center gap-3 text-muted fs-9">
                     <span>
                         <i class="bi bi-book me-1 text-primary"></i>
                         <strong class="text-gray-800">{{ $mappings->count() }}</strong> MK
@@ -53,23 +48,23 @@
                         <strong class="text-success">{{ $totalSks }}</strong> SKS
                     </span>
                     <span class="badge badge-light-warning fs-9">{{ $totalWajib }} Wajib</span>
-                    <i class="bi bi-chevron-up text-primary fs-7 ms-2"></i>
+                    <i class="bi bi-chevron-up text-primary fs-9 ms-1"></i>
                 </div>
             </div>
 
-            {{-- Tabel MK --}}
+            {{-- Tabel MK — lebih rapat --}}
             <div class="collapse show" id="semCollapse-{{ $rombel->id }}-{{ $semester }}">
                 <div class="table-responsive border border-top-0 rounded-bottom">
-                    <table class="table table-sm align-middle fs-7 mb-0 gy-1">
+                    <table class="table table-sm align-middle fs-8 mb-0 gy-0">
                         <thead class="bg-gray-100 border-bottom">
-                            <tr class="fw-semibold text-uppercase text-muted fs-8">
-                                <th class="ps-5 py-3 min-w-30px text-center">#</th>
-                                <th class="py-3 min-w-100px">Kode MK</th>
-                                <th class="py-3 min-w-220px">Nama Mata Kuliah</th>
-                                <th class="text-center py-3 min-w-60px">SKS</th>
-                                <th class="text-center py-3 min-w-80px">Jenis</th>
-                                <th class="py-3 min-w-160px">Dosen Pengampu</th>
-                                <th class="text-center py-3 min-w-115px">Aksi</th>
+                            <tr class="fw-semibold text-uppercase text-muted fs-9">
+                                <th class="ps-4 py-2 min-w-30px text-center">#</th>
+                                <th class="py-2 min-w-80px">Kode MK</th>
+                                <th class="py-2 min-w-200px">Nama Mata Kuliah</th>
+                                <th class="text-center py-2 min-w-50px">SKS</th>
+                                <th class="text-center py-2 min-w-70px">Jenis</th>
+                                <th class="py-2 min-w-150px">Dosen Pengampu</th>
+                                <th class="text-center py-2 min-w-100px">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -80,20 +75,20 @@
                                 @endif
 
                                 <tr class="border-bottom border-gray-100">
-                                    <td class="ps-5 text-center text-muted">{{ $i + 1 }}</td>
+                                    <td class="ps-4 text-center text-muted">{{ $i + 1 }}</td>
 
                                     <td>
-                                        <span class="badge badge-light fw-bold text-dark font-monospace px-2">
+                                        <span class="badge badge-light fw-bold text-dark font-monospace px-2 fs-9">
                                             {{ $mk->kode_mk }}
                                         </span>
                                     </td>
 
                                     <td>
-                                        <span class="fw-semibold text-gray-800">{{ $mk->nama_mk }}</span>
+                                        <span class="fw-semibold text-gray-800 fs-8">{{ $mk->nama_mk }}</span>
                                     </td>
 
                                     <td class="text-center">
-                                        <span class="fw-bolder text-primary">{{ $mk->bobot }}</span>
+                                        <span class="fw-bolder text-primary fs-8">{{ $mk->bobot }}</span>
                                         <span class="text-muted fs-9"> SKS</span>
                                     </td>
 
@@ -106,7 +101,7 @@
                                                 default => 'secondary',
                                             };
                                         @endphp
-                                        <span class="badge badge-light-{{ $color }} fw-semibold">
+                                        <span class="badge badge-light-{{ $color }} fw-semibold fs-9">
                                             {{ $mk->jenis === 'umum' ? 'MKU' : ucfirst($mk->jenis) }}
                                         </span>
                                     </td>
@@ -114,27 +109,28 @@
                                     <td>
                                         @if ($mk->dosen && $mk->dosen->user)
                                             <div class="d-flex align-items-center gap-2">
-                                                <div class="symbol symbol-25px flex-shrink-0">
+                                                <div class="symbol symbol-20px flex-shrink-0">
                                                     <span
                                                         class="symbol-label bg-light-success fw-bold text-success fs-9">
                                                         {{ strtoupper(substr($mk->dosen->user->nama, 0, 1)) }}
                                                     </span>
                                                 </div>
-                                                <span class="text-truncate fs-8 fw-semibold" style="max-width:140px">
+                                                <span class="text-truncate fs-8 fw-semibold" style="max-width:130px">
                                                     {{ $mk->dosen->user->nama }}
                                                 </span>
                                             </div>
                                         @else
-                                            <span class="text-muted fs-8">—</span>
+                                            <span class="text-muted fs-9">—</span>
                                         @endif
                                     </td>
 
-                                    {{-- AKSI — tanpa @can agar selalu tampil --}}
+                                    {{-- AKSI --}}
                                     <td class="text-center">
                                         <button type="button" class="btn btn-icon btn-sm btn-light-primary me-1"
                                             title="Detail" data-bs-toggle="modal"
-                                            data-bs-target="#modalDetailMatkul{{ $mk->id }}">
-                                            <i class="bi bi-eye-fill fs-6"></i>
+                                            data-bs-target="#modalDetailMatkul{{ $mk->id }}"
+                                            style="width:26px;height:26px">
+                                            <i class="bi bi-eye-fill fs-8"></i>
                                         </button>
 
                                         <button type="button"
@@ -144,14 +140,16 @@
                                             data-kode="{{ $mk->kode_mk }}" data-nama="{{ $mk->nama_mk }}"
                                             data-bobot="{{ $mk->bobot }}" data-jenis="{{ $mk->jenis }}"
                                             data-id-dosen="{{ $mk->id_dosen }}"
-                                            data-mappings="{{ json_encode($mk->prodiMappings->map(fn($mp) => ['prodi_id' => $mp->id_prodi, 'semester' => $mp->semester])) }}">
-                                            <i class="bi bi-pencil-fill fs-6"></i>
+                                            data-mappings="{{ json_encode($mk->prodiMappings->map(fn($mp) => ['prodi_id' => $mp->id_prodi, 'semester' => $mp->semester])) }}"
+                                            style="width:26px;height:26px">
+                                            <i class="bi bi-pencil-fill fs-8"></i>
                                         </button>
 
                                         <button type="button" class="btn btn-icon btn-sm btn-light-danger"
                                             title="Hapus" data-bs-toggle="modal"
-                                            data-bs-target="#modalDeleteMatkul{{ $mk->id }}">
-                                            <i class="bi bi-trash-fill fs-6"></i>
+                                            data-bs-target="#modalDeleteMatkul{{ $mk->id }}"
+                                            style="width:26px;height:26px">
+                                            <i class="bi bi-trash-fill fs-8"></i>
                                         </button>
                                     </td>
                                 </tr>
