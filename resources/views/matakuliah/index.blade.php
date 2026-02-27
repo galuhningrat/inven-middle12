@@ -44,7 +44,7 @@
             @include('master.notification')
 
             {{-- ================================================================ --}}
-            {{-- STATS CARDS — kompak                                             --}}
+            {{-- STATS CARDS — berubah sesuai filter aktif                        --}}
             {{-- ================================================================ --}}
             <div class="row g-3 mb-3">
                 <div class="col-sm-6 col-xl-3">
@@ -55,8 +55,13 @@
                                 <i class="bi bi-book-fill fs-5 text-primary"></i>
                             </div>
                             <div>
-                                <div class="fs-2x fw-bold text-gray-800 lh-1">{{ $totalUniqueMatkul }}</div>
-                                <div class="fs-9 fw-semibold text-gray-500">Total Mata Kuliah</div>
+                                <div class="fs-2x fw-bold text-gray-800 lh-1">{{ $statTotalMatkul }}</div>
+                                <div class="fs-9 fw-semibold text-gray-500">
+                                    Total Mata Kuliah
+                                    @if ($isFiltered)
+                                        <span class="text-primary ms-1">(hasil filter)</span>
+                                    @endif
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -69,7 +74,7 @@
                                 <i class="bi bi-building fs-5 text-success"></i>
                             </div>
                             <div>
-                                <div class="fs-2x fw-bold text-gray-800 lh-1">{{ $fakultas->count() }}</div>
+                                <div class="fs-2x fw-bold text-gray-800 lh-1">{{ $statFakultasCount }}</div>
                                 <div class="fs-9 fw-semibold text-gray-500">Fakultas</div>
                             </div>
                         </div>
@@ -82,7 +87,7 @@
                                 <i class="bi bi-mortarboard-fill fs-5 text-info"></i>
                             </div>
                             <div>
-                                <div class="fs-2x fw-bold text-gray-800 lh-1">{{ $allProdi->count() }}</div>
+                                <div class="fs-2x fw-bold text-gray-800 lh-1">{{ $statProdiCount }}</div>
                                 <div class="fs-9 fw-semibold text-gray-500">Program Studi</div>
                             </div>
                         </div>
@@ -96,7 +101,7 @@
                                 <i class="bi bi-people-fill fs-5 text-warning"></i>
                             </div>
                             <div>
-                                <div class="fs-2x fw-bold text-gray-800 lh-1">{{ $allRombel->count() }}</div>
+                                <div class="fs-2x fw-bold text-gray-800 lh-1">{{ $statRombelCount }}</div>
                                 <div class="fs-9 fw-semibold text-gray-500">Rombel / Angkatan</div>
                             </div>
                         </div>
@@ -110,7 +115,7 @@
             <div class="card mb-3">
                 <div class="card-body py-3 px-4">
                     <form method="GET" action="{{ route('matakuliah.index') }}"
-                        class="d-flex flex-wrap gap-2 align-items-end">
+                        class="d-flex flex-wrap gap-2 align-items-end" id="formFilter">
 
                         <div style="min-width:180px;max-width:260px;flex-grow:1">
                             <label class="form-label fw-semibold fs-8 mb-1">Cari Mata Kuliah</label>
@@ -118,31 +123,38 @@
                                 <span class="input-group-text bg-white px-2">
                                     <i class="bi bi-search text-gray-500 fs-8"></i>
                                 </span>
-                                <input type="text" name="search" class="form-control form-control-sm"
-                                    placeholder="Kode / Nama MK..." value="{{ request('search') }}">
+                                <input type="text" name="search" id="inputSearch"
+                                    class="form-control form-control-sm {{ $search ? 'border-primary' : '' }}"
+                                    placeholder="Kode / Nama MK..." value="{{ $search ?? '' }}">
                             </div>
                         </div>
 
                         <div style="min-width:150px">
                             <label class="form-label fw-semibold fs-8 mb-1">Program Studi</label>
-                            <select name="filter_prodi" class="form-select form-select-sm">
+                            <select name="filter_prodi" id="selectProdi"
+                                class="form-select form-select-sm {{ $filterProdi ? 'border-primary' : '' }}">
                                 <option value="">Semua Prodi</option>
                                 @foreach ($allProdi as $p)
-                                    <option value="{{ $p->id }}"
-                                        {{ request('filter_prodi') == $p->id ? 'selected' : '' }}>
+                                    <option value="{{ $p->id }}" {{ $filterProdi == $p->id ? 'selected' : '' }}>
                                         {{ $p->nama_prodi }}
                                     </option>
                                 @endforeach
                             </select>
                         </div>
 
+                        {{-- ─────────────────────────────────────────────────────────────
+                             FIX BUG 6: Rombel dropdown dengan data-prodi-id agar JS bisa
+                             menyembunyikan option yang bukan milik Prodi terpilih.
+                             data-prodi-id diisi dari relasi $r->prodi->id (eager-loaded).
+                             ───────────────────────────────────────────────────────────── --}}
                         <div style="min-width:160px">
                             <label class="form-label fw-semibold fs-8 mb-1">Rombel / Angkatan</label>
-                            <select name="filter_rombel" class="form-select form-select-sm">
+                            <select name="filter_rombel" id="selectRombel"
+                                class="form-select form-select-sm {{ $filterRombel ? 'border-primary' : '' }}">
                                 <option value="">Semua Rombel</option>
                                 @foreach ($allRombel as $r)
-                                    <option value="{{ $r->id }}"
-                                        {{ request('filter_rombel') == $r->id ? 'selected' : '' }}>
+                                    <option value="{{ $r->id }}" data-prodi-id="{{ $r->prodi->id ?? '' }}"
+                                        {{ $filterRombel == $r->id ? 'selected' : '' }}>
                                         {{ $r->nama_rombel }}
                                         @if ($r->tahunMasuk)
                                             ({{ $r->tahunMasuk->tahun_awal }})
@@ -154,11 +166,11 @@
 
                         <div style="min-width:130px">
                             <label class="form-label fw-semibold fs-8 mb-1">Semester</label>
-                            <select name="filter_semester" class="form-select form-select-sm">
+                            <select name="filter_semester" id="selectSemester"
+                                class="form-select form-select-sm {{ $filterSemester ? 'border-primary' : '' }}">
                                 <option value="">Semua Semester</option>
                                 @for ($s = 1; $s <= 14; $s++)
-                                    <option value="{{ $s }}"
-                                        {{ request('filter_semester') == $s ? 'selected' : '' }}>
+                                    <option value="{{ $s }}" {{ $filterSemester == $s ? 'selected' : '' }}>
                                         Semester {{ $s }}
                                     </option>
                                 @endfor
@@ -169,8 +181,12 @@
                             <button type="submit" class="btn btn-sm btn-primary px-3">
                                 <i class="bi bi-funnel me-1"></i>Filter
                             </button>
-                            <a href="{{ route('matakuliah.index') }}" class="btn btn-sm btn-light px-3">
+                            <a href="{{ route('matakuliah.index') }}"
+                                class="btn btn-sm {{ $isFiltered ? 'btn-danger' : 'btn-light' }} px-3">
                                 <i class="bi bi-x-lg me-1"></i>Reset
+                                @if ($isFiltered)
+                                    <span class="badge badge-white text-danger ms-1 fs-9" id="filterCount"></span>
+                                @endif
                             </a>
                         </div>
 
@@ -187,6 +203,41 @@
                         </div>
 
                     </form>
+
+                    {{-- Banner filter aktif --}}
+                    @if ($isFiltered)
+                        <div class="d-flex align-items-center gap-2 mt-2 pt-2 border-top border-dashed">
+                            <i class="bi bi-funnel-fill text-primary fs-8"></i>
+                            <span class="fs-9 text-gray-600 fw-semibold">Filter aktif:</span>
+                            @if ($search)
+                                <span class="badge badge-light-primary fs-9">
+                                    <i class="bi bi-search me-1"></i>"{{ $search }}"
+                                </span>
+                            @endif
+                            @if ($filterProdi)
+                                <span class="badge badge-light-success fs-9">
+                                    <i class="bi bi-mortarboard me-1"></i>
+                                    {{ $allProdi->firstWhere('id', $filterProdi)?->nama_prodi ?? 'Prodi #' . $filterProdi }}
+                                </span>
+                            @endif
+                            @if ($filterRombel)
+                                <span class="badge badge-light-warning fs-9">
+                                    <i class="bi bi-people me-1"></i>
+                                    {{ $allRombel->firstWhere('id', $filterRombel)?->nama_rombel ?? 'Rombel #' . $filterRombel }}
+                                </span>
+                            @endif
+                            @if ($filterSemester)
+                                <span class="badge badge-light-info fs-9">
+                                    <i class="bi bi-calendar3 me-1"></i>Semester {{ $filterSemester }}
+                                </span>
+                            @endif
+                            <span class="text-muted fs-9 ms-1">
+                                — menampilkan <strong>{{ $statTotalMatkul }}</strong> MK di
+                                <strong>{{ $statProdiCount }}</strong> Prodi
+                            </span>
+                        </div>
+                    @endif
+
                 </div>
             </div>
 
@@ -609,10 +660,74 @@
 @push('scripts')
     <script>
         $(document).ready(function() {
-            // Aktifkan tooltips Bootstrap untuk semua elemen ber-title
+            // ── Tooltips Bootstrap ────────────────────────────────────────────
             $('[title]').tooltip({
                 trigger: 'hover'
             });
+
+            // ================================================================
+            // FIX BUG 6: Dynamic Rombel dropdown
+            //
+            // Saat user memilih Prodi, dropdown Rombel otomatis menyembunyikan
+            // option yang bukan milik Prodi tersebut. Setiap <option> rombel
+            // memiliki data-prodi-id="{{ $r->prodi->id }}" yang di-render
+            // oleh Blade dari relasi eager-loaded.
+            //
+            // Logika:
+            //   - Prodi dipilih  → sembunyikan rombel prodi lain, reset jika
+            //                      rombel saat ini bukan milik prodi terpilih
+            //   - Prodi direset  → tampilkan semua rombel kembali
+            // ================================================================
+            var $selectProdi = $('#selectProdi');
+            var $selectRombel = $('#selectRombel');
+
+            // Simpan semua option rombel (termasuk "Semua Rombel") ke memori
+            // agar bisa di-restore saat prodi direset ke "Semua"
+            var $allRombelOptions = $selectRombel.find('option').clone();
+
+            function filterRombelByProdi(prodiId) {
+                var currentRombel = $selectRombel.val();
+                $selectRombel.find('option').each(function() {
+                    var $opt = $(this);
+                    var optProdi = $opt.data('prodi-id');
+
+                    if (!prodiId || !optProdi || optProdi == prodiId) {
+                        // Tampilkan: option "Semua Rombel" (no data-prodi-id),
+                        // atau rombel milik prodi terpilih
+                        $opt.show().prop('disabled', false);
+                    } else {
+                        $opt.hide().prop('disabled', true);
+                    }
+                });
+
+                // Reset pilihan rombel jika rombel aktif bukan milik prodi baru
+                if (currentRombel) {
+                    var $selectedOpt = $selectRombel.find('option[value="' + currentRombel + '"]');
+                    if ($selectedOpt.prop('disabled')) {
+                        $selectRombel.val('');
+                    }
+                }
+            }
+
+            // Jalankan saat halaman load (ada filter prodi dari server)
+            filterRombelByProdi($selectProdi.val());
+
+            // Jalankan saat user mengubah pilihan prodi
+            $selectProdi.on('change', function() {
+                filterRombelByProdi($(this).val());
+            });
+
+            // ── Hitung jumlah filter aktif untuk badge di tombol Reset ───────
+            (function countActiveFilters() {
+                var count = 0;
+                if ($('#inputSearch').val().trim()) count++;
+                if ($('#selectProdi').val()) count++;
+                if ($('#selectRombel').val()) count++;
+                if ($('#selectSemester').val()) count++;
+                if (count > 0) {
+                    $('#filterCount').text(count + ' aktif');
+                }
+            })();
 
             {{--
                 CATATAN PENTING:

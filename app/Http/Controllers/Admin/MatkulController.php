@@ -34,29 +34,36 @@ class MatkulController extends Controller
         $filterRombel   = $request->filled('filter_rombel')   ? (int) $request->filter_rombel   : null;
         $filterSemester = $request->filled('filter_semester') ? (int) $request->filter_semester : null;
         $search         = $request->filled('search')          ? trim($request->search)           : null;
+        $isFiltered     = (bool) ($filterProdi || $filterRombel || $filterSemester || $search);
 
-        // ── STEP 1: Load Fakultas → Prodi → Rombel ────────────────────────
+        // ── STEP 1: Load Fakultas → Prodi → Rombel (dengan filter) ───────
         //
-        // KEY FIX: Prodi::rombel() sebelumnya tidak ada di model Prodi.
-        // Setelah relasi ditambahkan, eager-load ini akan bekerja dengan benar.
+        // FIX BUG 1: Saat filter_rombel aktif, gunakan whereHas agar hanya
+        // Prodi yang MEMILIKI rombel tersebut yang masuk ke dalam collection.
+        // Tanpa whereHas, Prodi lain tetap muncul dengan rombel kosong,
+        // menghasilkan accordion header tanpa isi.
         //
-        // Struktur yang terbentuk:
-        //   $fakultas[0]->prodi[0]->rombel[0]  ← Rombel A
-        //   $fakultas[0]->prodi[0]->rombel[1]  ← Rombel B
-        //   $fakultas[0]->prodi[1]->rombel[0]  ← Rombel C
+        // FIX BUG 5 (PostgreSQL): Kualifikasi nama kolom 'prodi.id' dan
+        // 'rombel.id' agar tidak ambiguous saat Eloquent men-generate subquery.
         // ─────────────────────────────────────────────────────────────────
         $fakultas = Fakultas::with([
-            // ✅ Tambahkan $filterRombel di sini agar bisa dipakai di closure dalamnya
             'prodi' => function ($prodiQuery) use ($filterProdi, $filterRombel) {
                 if ($filterProdi) {
-                    $prodiQuery->where('id', $filterProdi);
+                    $prodiQuery->where('prodi.id', $filterProdi);
                 }
-                $prodiQuery->orderBy('nama_prodi');
+                if ($filterRombel) {
+                    // Hanya Prodi yang PUNYA rombel yang dimaksud
+                    $prodiQuery->whereHas(
+                        'rombel',
+                        fn($q) => $q->where('rombel.id', $filterRombel)
+                    );
+                }
+                $prodiQuery->orderBy('prodi.nama_prodi');
 
                 $prodiQuery->with([
                     'rombel' => function ($rombelQuery) use ($filterRombel) {
                         if ($filterRombel) {
-                            $rombelQuery->where('id', $filterRombel);
+                            $rombelQuery->where('rombel.id', $filterRombel);
                         }
                         $rombelQuery->with('tahunMasuk')->orderBy('nama_rombel');
                     },
@@ -64,13 +71,19 @@ class MatkulController extends Controller
             },
         ])->orderBy('nama_fakultas')->get();
 
-        // ── STEP 2: Load semua MatkulProdiSemester yang relevan ────────────
+        // Pangkas Fakultas tanpa Prodi setelah filter Prodi/Rombel
+        $fakultas = $fakultas->filter(fn($f) => $f->prodi->isNotEmpty())->values();
+
+        // ── STEP 2: Load MatkulProdiSemester yang relevan ─────────────────
         //
         // MK di kurikulum terikat ke (Prodi + Semester), BUKAN ke Rombel.
-        // Artinya: semua Rombel dalam satu Prodi berbagi kurikulum MK
-        // yang sama (dikelompokkan per Semester).
+        // Semua Rombel dalam satu Prodi berbagi kurikulum MK yang sama.
         //
-        // Hasil grouping: $mkByProdi[id_prodi][semester] = [MatkulProdiSemester, ...]
+        // FIX BUG 4 (PostgreSQL): Gunakan ILIKE (bukan LIKE) untuk pencarian
+        // case-insensitive. PostgreSQL membedakan huruf besar/kecil pada LIKE.
+        //
+        // FIX BUG 5 (PostgreSQL): Kualifikasi kolom 'semester' agar tidak
+        // ambiguous saat whereHas men-generate subquery dengan join.
         // ─────────────────────────────────────────────────────────────────
         $prodiIds = $fakultas
             ->flatMap(fn($f) => $f->prodi->pluck('id'))
@@ -80,28 +93,44 @@ class MatkulController extends Controller
 
         $pivotQuery = MatkulProdiSemester::with([
             'matkul' => fn($q) => $q->with(['dosen.user', 'prodiMappings.prodi']),
-        ])->whereIn('id_prodi', $prodiIds);
+        ])->whereIn('matkul_prodi_semester.id_prodi', $prodiIds);
 
         if ($filterSemester) {
-            $pivotQuery->where('semester', $filterSemester);
+            // Kualifikasi tabel agar tidak ambiguous di PostgreSQL
+            $pivotQuery->where('matkul_prodi_semester.semester', $filterSemester);
         }
 
         if ($search) {
             $pivotQuery->whereHas(
                 'matkul',
-                fn($q) =>
-                $q->where('kode_mk', 'LIKE', "%{$search}%")
-                    ->orWhere('nama_mk', 'LIKE', "%{$search}%")
+                fn($q) => $q->where('kode_mk', 'ILIKE', "%{$search}%")
+                    ->orWhere('nama_mk',  'ILIKE', "%{$search}%")
             );
         }
 
         // Bangun array: $mkByProdi[id_prodi][semester] = [ ...MatkulProdiSemester ]
         $mkByProdi = [];
-        foreach ($pivotQuery->orderBy('semester')->get() as $mp) {
+        foreach ($pivotQuery->orderBy('matkul_prodi_semester.semester')->get() as $mp) {
             $mkByProdi[$mp->id_prodi][$mp->semester][] = $mp;
         }
 
-        // ── STEP 3: Statistik ringkas per Prodi (untuk badge di pill) ──────
+        // ── STEP 3: FIX BUG 2 — Pangkas Prodi/Fakultas tanpa MK ──────────
+        //
+        // Filter semester atau search bisa menghasilkan $mkByProdi yang
+        // tidak memuat semua Prodi dari $fakultas. Prodi tersebut akan
+        // menampilkan accordion kosong di view — pangkas di sini.
+        // ─────────────────────────────────────────────────────────────────
+        if ($isFiltered) {
+            foreach ($fakultas as $fak) {
+                $fak->setRelation(
+                    'prodi',
+                    $fak->prodi->filter(fn($p) => isset($mkByProdi[$p->id]))->values()
+                );
+            }
+            $fakultas = $fakultas->filter(fn($f) => $f->prodi->isNotEmpty())->values();
+        }
+
+        // ── STEP 4: Statistik ringkas per Prodi (untuk badge di pill) ──────
         $statsByProdi = [];
         foreach ($mkByProdi as $prodiId => $bySemester) {
             $total = $totalSks = 0;
@@ -117,26 +146,67 @@ class MatkulController extends Controller
             ];
         }
 
-        // ── STEP 4: Data pendukung untuk filter bar & modal ───────────────
-        $totalUniqueMatkul = Matkul::count();
-        $allProdi          = Prodi::orderBy('nama_prodi')->get();
+        // ── STEP 5: FIX BUG 3 — Hitung stat cards SESUAI filter ──────────
+        //
+        // Sebelumnya stat cards selalu menampilkan count global (Matkul::count(),
+        // $allProdi->count(), dll) — tidak pernah berubah saat filter aktif.
+        // Sekarang kita hitung dari data yang sudah dipangkas.
+        // ─────────────────────────────────────────────────────────────────
 
-        // ✅ Load semua rombel dengan relasi prodi dan tahunMasuk
-        // (untuk dropdown filter rombel)
-        $allRombel = Rombel::with(['prodi', 'tahunMasuk'])
-            ->orderBy('nama_rombel')
-            ->get();
+        // Unique MK dari hasil filter (deduplikasi karena 1 MK bisa di N prodi)
+        $filteredMkIds = collect();
+        foreach ($mkByProdi as $bySemester) {
+            foreach ($bySemester as $semMappings) {
+                foreach ($semMappings as $mp) {
+                    if ($mp->matkul) {
+                        $filteredMkIds->push($mp->matkul->id);
+                    }
+                }
+            }
+        }
 
-        $dosen = Dosen::with('user')->get();
+        $statTotalMatkul   = $isFiltered
+            ? $filteredMkIds->unique()->count()
+            : Matkul::count();
+
+        $statFakultasCount = $fakultas->count();
+
+        $statProdiCount    = $fakultas->sum(fn($f) => $f->prodi->count());
+
+        // Rombel: hitung dari prodi yang tampil (sudah di-filter di eager load)
+        $statRombelCount   = $isFiltered
+            ? $fakultas->sum(fn($f) => $f->prodi->sum(fn($p) => $p->rombel->count()))
+            : Rombel::count();
+
+        // ── STEP 6: Data pendukung (dropdown filter & modal — selalu full) ─
+        //
+        // $allProdi dan $allRombel TETAP full list agar dropdown filter
+        // menampilkan semua pilihan. Stats cards menggunakan variabel stat* di atas.
+        // $allRombel membawa id_prodi (via relasi prodi) untuk JS dynamic filter.
+        // ─────────────────────────────────────────────────────────────────
+        $allProdi  = Prodi::orderBy('nama_prodi')->get();
+        $allRombel = Rombel::with(['prodi', 'tahunMasuk'])->orderBy('nama_rombel')->get();
+        $dosen     = Dosen::with('user')->get();
 
         return view('matakuliah.index', compact(
             'fakultas',
             'mkByProdi',
             'statsByProdi',
-            'totalUniqueMatkul',
+            // Stat cards (filter-aware)
+            'statTotalMatkul',
+            'statFakultasCount',
+            'statProdiCount',
+            'statRombelCount',
+            // Dropdown data (selalu full list)
             'allProdi',
             'allRombel',
-            'dosen'
+            'dosen',
+            // Nilai filter aktif (untuk pre-select dropdown & badge)
+            'filterProdi',
+            'filterRombel',
+            'filterSemester',
+            'search',
+            'isFiltered',
         ));
     }
 
