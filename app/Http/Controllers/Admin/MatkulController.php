@@ -220,11 +220,16 @@ class MatkulController extends Controller
         $dosen       = Dosen::with('user')->get();
         $totalOrphan = Matkul::doesntHave('prodiMappings')->count();
 
+        // Pass allRombel agar modal Create & Edit bisa embed rombelData JSON
+        // tanpa perlu AJAX ke route rombel-by-prodi
+        $allRombel = Rombel::with(['prodi', 'tahunMasuk'])->orderBy('nama_rombel')->get();
+
         return view('matakuliah.all-data', compact(
             'matakuliah',
             'prodi',
             'dosen',
-            'totalOrphan'
+            'totalOrphan',
+            'allRombel',
         ));
     }
 
@@ -234,7 +239,7 @@ class MatkulController extends Controller
     // ============================================================
     public function editData($id)
     {
-        $mk = Matkul::with(['prodiMappings'])->findOrFail($id);
+        $mk = Matkul::with(['prodiMappings.rombel'])->findOrFail($id);
         return response()->json([
             'id'       => $mk->id,
             'kode_mk'  => $mk->kode_mk,
@@ -243,11 +248,41 @@ class MatkulController extends Controller
             'jenis'    => $mk->jenis,
             'id_dosen' => $mk->id_dosen,
             'mappings' => $mk->prodiMappings->map(fn($mp) => [
-                'prodi_id' => $mp->id_prodi,
-                'semester' => $mp->semester,
-                'angkatan' => $mp->angkatan,
+                'prodi_id'  => $mp->id_prodi,
+                'semester'  => $mp->semester,
+                'id_rombel' => $mp->id_rombel,   // null = semua rombel
+                'angkatan'  => $mp->angkatan,
             ]),
         ]);
+    }
+
+    // ============================================================
+    // ROMBEL BY PRODI — AJAX endpoint untuk dropdown di modal
+    //
+    // Route: GET /matakuliah/rombel-by-prodi/{prodiId}
+    // Tambahkan di routes/web.php:
+    //   Route::get('matakuliah/rombel-by-prodi/{prodiId}',
+    //       [MatkulController::class, 'getRombelByProdi'])
+    //       ->name('matakuliah.rombel-by-prodi')
+    //       ->middleware('permission:kurikulum,read');
+    // ============================================================
+    public function getRombelByProdi($prodiId)
+    {
+        $rombel = Rombel::with('tahunMasuk')
+            ->where('id_prodi', $prodiId)
+            ->orderBy('nama_rombel')
+            ->get()
+            ->map(fn($r) => [
+                'id'         => $r->id,
+                'nama'       => $r->nama_rombel,
+                'kode'       => $r->kode_rombel,
+                'tahun_awal' => $r->tahunMasuk?->tahun_awal,
+                'label'      => $r->nama_rombel
+                    . ($r->kode_rombel ? ' (' . $r->kode_rombel . ')' : '')
+                    . ($r->tahunMasuk  ? ' – ' . $r->tahunMasuk->tahun_awal : ''),
+            ]);
+
+        return response()->json($rombel);
     }
 
     // ============================================================
@@ -264,7 +299,9 @@ class MatkulController extends Controller
             'mappings'             => 'required|array|min:1',
             'mappings.*.prodi_id'  => 'required|exists:prodi,id',
             'mappings.*.semester'  => 'required|integer|min:1|max:14',
-            'mappings.*.angkatan'  => 'nullable|digits:4',
+            // rombel_ids bersifat opsional: kosong = berlaku semua rombel (id_rombel = NULL)
+            'mappings.*.rombel_ids'   => 'nullable|array',
+            'mappings.*.rombel_ids.*' => 'exists:rombel,id',
         ], [
             'mappings.required'            => 'Minimal satu mapping Prodi & Semester harus diisi.',
             'mappings.min'                 => 'Minimal satu mapping Prodi & Semester harus diisi.',
@@ -272,10 +309,33 @@ class MatkulController extends Controller
             'mappings.*.semester.required' => 'Pilih Semester untuk setiap mapping.',
         ]);
 
-        $pairs = array_map(fn($m) => $m['prodi_id'] . '_' . $m['semester'], $validated['mappings']);
+        // ── Expand mappings: 1 row UI → N rows database ───────────────────
+        //
+        // Contoh input UI:
+        //   mappings[0][prodi_id]   = 1
+        //   mappings[0][semester]   = 3
+        //   mappings[0][rombel_ids] = [5, 7]   ← 2 rombel
+        //
+        // Hasil expand:
+        //   → {id_prodi:1, semester:3, id_rombel:5}
+        //   → {id_prodi:1, semester:3, id_rombel:7}
+        //
+        // Jika rombel_ids kosong/null:
+        //   → {id_prodi:1, semester:3, id_rombel:NULL}  ← semua rombel
+        // ─────────────────────────────────────────────────────────────────
+        $expandedRows = $this->expandMappingRows($validated['mappings']);
+
+        // Cek duplikat (prodi + semester + id_rombel harus unik per MK)
+        $pairs = array_map(
+            fn($r) => $r['id_prodi'] . '_' . $r['semester'] . '_' . ($r['id_rombel'] ?? 'ALL'),
+            $expandedRows
+        );
         if (count($pairs) !== count(array_unique($pairs))) {
-            return redirect()->back()->withInput()
-                ->withErrors(['mappings' => 'Terdapat duplikat kombinasi Prodi & Semester.']);
+            $msg = 'Terdapat duplikat kombinasi Prodi + Semester + Rombel.';
+            if ($request->ajax() || $request->wantsJson() || $request->get('ajax') === '1') {
+                return response()->json(['errors' => ['mappings' => [$msg]]], 422);
+            }
+            return redirect()->back()->withInput()->withErrors(['mappings' => $msg]);
         }
 
         DB::beginTransaction();
@@ -288,12 +348,13 @@ class MatkulController extends Controller
                 'id_dosen' => $validated['id_dosen'],
             ]);
 
-            foreach ($validated['mappings'] as $mapping) {
+            foreach ($expandedRows as $row) {
                 MatkulProdiSemester::create([
                     'id_matkul' => $matkul->id,
-                    'id_prodi'  => $mapping['prodi_id'],
-                    'semester'  => $mapping['semester'],
-                    'angkatan'  => $mapping['angkatan'] ?? null,
+                    'id_prodi'  => $row['id_prodi'],
+                    'id_rombel' => $row['id_rombel'],   // null = semua rombel
+                    'semester'  => $row['semester'],
+                    'angkatan'  => $row['angkatan'],    // auto-isi dari tahunMasuk rombel
                 ]);
             }
 
@@ -335,15 +396,16 @@ class MatkulController extends Controller
         $matakuliah = Matkul::findOrFail($id);
 
         $validated = $request->validate([
-            'kode_mk'              => 'required|max:15|unique:matkul,kode_mk,' . $matakuliah->id,
-            'nama_mk'              => 'required|string|max:100',
-            'bobot'                => 'required|integer|min:1|max:9',
-            'jenis'                => 'required|in:wajib,pilihan,umum',
-            'id_dosen'             => 'required|exists:dosen,id',
-            'mappings'             => 'required|array|min:1',
-            'mappings.*.prodi_id'  => 'required|exists:prodi,id',
-            'mappings.*.semester'  => 'required|integer|min:1|max:14',
-            'mappings.*.angkatan'  => 'nullable|digits:4',
+            'kode_mk'                 => 'required|max:15|unique:matkul,kode_mk,' . $matakuliah->id,
+            'nama_mk'                 => 'required|string|max:100',
+            'bobot'                   => 'required|integer|min:1|max:9',
+            'jenis'                   => 'required|in:wajib,pilihan,umum',
+            'id_dosen'                => 'required|exists:dosen,id',
+            'mappings'                => 'required|array|min:1',
+            'mappings.*.prodi_id'     => 'required|exists:prodi,id',
+            'mappings.*.semester'     => 'required|integer|min:1|max:14',
+            'mappings.*.rombel_ids'   => 'nullable|array',
+            'mappings.*.rombel_ids.*' => 'exists:rombel,id',
         ], [
             'kode_mk.unique'               => 'Kode Mata Kuliah sudah digunakan oleh mata kuliah lain!',
             'mappings.required'            => 'Minimal satu mapping Prodi & Semester harus diisi.',
@@ -352,13 +414,18 @@ class MatkulController extends Controller
             'mappings.*.semester.required' => 'Pilih Semester untuk setiap mapping.',
         ]);
 
-        $pairs = array_map(fn($m) => $m['prodi_id'] . '_' . $m['semester'], $validated['mappings']);
+        $expandedRows = $this->expandMappingRows($validated['mappings']);
+
+        $pairs = array_map(
+            fn($r) => $r['id_prodi'] . '_' . $r['semester'] . '_' . ($r['id_rombel'] ?? 'ALL'),
+            $expandedRows
+        );
         if (count($pairs) !== count(array_unique($pairs))) {
+            $msg = 'Terdapat duplikat kombinasi Prodi + Semester + Rombel.';
             if ($request->ajax() || $request->wantsJson()) {
-                return response()->json(['errors' => ['mappings' => ['Terdapat duplikat kombinasi Prodi & Semester.']]], 422);
+                return response()->json(['errors' => ['mappings' => [$msg]]], 422);
             }
-            return redirect()->back()->withInput()
-                ->withErrors(['mappings' => 'Terdapat duplikat kombinasi Prodi & Semester.']);
+            return redirect()->back()->withInput()->withErrors(['mappings' => $msg]);
         }
 
         DB::beginTransaction();
@@ -371,20 +438,22 @@ class MatkulController extends Controller
                 'id_dosen' => $validated['id_dosen'],
             ]);
 
+            // Hapus semua mapping lama, insert ulang (simple & aman)
             $matakuliah->prodiMappings()->delete();
 
-            foreach ($validated['mappings'] as $mapping) {
+            foreach ($expandedRows as $row) {
                 MatkulProdiSemester::create([
                     'id_matkul' => $matakuliah->id,
-                    'id_prodi'  => $mapping['prodi_id'],
-                    'semester'  => $mapping['semester'],
-                    'angkatan'  => $mapping['angkatan'] ?? null,
+                    'id_prodi'  => $row['id_prodi'],
+                    'id_rombel' => $row['id_rombel'],
+                    'semester'  => $row['semester'],
+                    'angkatan'  => $row['angkatan'],
                 ]);
             }
 
             DB::commit();
             Log::info('Matkul updated', ['id' => $matakuliah->id, 'user_id' => Auth::id()]);
-            $matakuliah->load(['dosen.user', 'prodiMappings']);
+            $matakuliah->load(['dosen.user', 'prodiMappings.rombel']);
 
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
@@ -398,8 +467,9 @@ class MatkulController extends Controller
                         'id_dosen'   => $matakuliah->id_dosen,
                         'dosen_nama' => $matakuliah->dosen->user->nama ?? '-',
                         'mappings'   => $matakuliah->prodiMappings->map(fn($mp) => [
-                            'prodi_id' => $mp->id_prodi,
-                            'semester' => $mp->semester,
+                            'prodi_id'  => $mp->id_prodi,
+                            'semester'  => $mp->semester,
+                            'id_rombel' => $mp->id_rombel,
                         ]),
                     ],
                 ]);
@@ -415,6 +485,65 @@ class MatkulController extends Controller
             return redirect()->back()->withInput()
                 ->with('error', 'Gagal mengupdate mata kuliah: ' . $e->getMessage());
         }
+    }
+
+    // ============================================================
+    // HELPER: Expand mapping rows UI → database rows
+    //
+    // Input (1 baris UI):
+    //   ['prodi_id' => 1, 'semester' => 3, 'rombel_ids' => [5, 7]]
+    //
+    // Output (N baris DB):
+    //   ['id_prodi' => 1, 'semester' => 3, 'id_rombel' => 5, 'angkatan' => 2024]
+    //   ['id_prodi' => 1, 'semester' => 3, 'id_rombel' => 7, 'angkatan' => 2022]
+    //
+    // Jika rombel_ids kosong → 1 baris dengan id_rombel = NULL (semua rombel)
+    // ============================================================
+    private function expandMappingRows(array $mappings): array
+    {
+        $rows = [];
+
+        // Cache Rombel yang dibutuhkan (cegah N+1 query)
+        $allRombelIds = collect($mappings)
+            ->pluck('rombel_ids')
+            ->filter()
+            ->flatten()
+            ->unique()
+            ->values()
+            ->all();
+
+        $rombelCache = Rombel::with('tahunMasuk')
+            ->whereIn('id', $allRombelIds)
+            ->get()
+            ->keyBy('id');
+
+        foreach ($mappings as $mapping) {
+            $rombelIds = array_filter($mapping['rombel_ids'] ?? []);
+
+            if (empty($rombelIds)) {
+                // Tidak ada rombel dipilih → berlaku untuk semua rombel
+                $rows[] = [
+                    'id_prodi'  => $mapping['prodi_id'],
+                    'semester'  => $mapping['semester'],
+                    'id_rombel' => null,
+                    'angkatan'  => null,
+                ];
+            } else {
+                // Expand: 1 row per rombel yang dipilih
+                foreach ($rombelIds as $rombelId) {
+                    $rombel   = $rombelCache->get($rombelId);
+                    $rows[] = [
+                        'id_prodi'  => $mapping['prodi_id'],
+                        'semester'  => $mapping['semester'],
+                        'id_rombel' => (int) $rombelId,
+                        // Auto-isi angkatan dari tahunMasuk rombel (untuk backward compat)
+                        'angkatan'  => $rombel?->tahunMasuk?->tahun_awal,
+                    ];
+                }
+            }
+        }
+
+        return $rows;
     }
 
     // ============================================================

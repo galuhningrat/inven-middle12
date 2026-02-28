@@ -447,9 +447,31 @@
 
                                                                     @foreach ($prodi->rombel as $ri => $rombel)
                                                                         @php
+                                                                            // ── FILTER PER ROMBEL ─────────────────────
+                                                                            // Tampilkan MK yang:
+                                                                            //   (a) id_rombel = NULL → berlaku semua rombel
+                                                                            //   (b) id_rombel = $rombel->id → khusus rombel ini
+                                                                            // MK dengan id_rombel = NULL adalah mapping lama
+                                                                            // (sebelum migration) yang backward-compatible.
                                                                             $bySemester = collect(
                                                                                 $mkByProdi[$prodi->id] ?? [],
-                                                                            )->sortKeys();
+                                                                            )
+                                                                                ->map(function ($mappings) use (
+                                                                                    $rombel,
+                                                                                ) {
+                                                                                    return array_values(
+                                                                                        array_filter(
+                                                                                            $mappings,
+                                                                                            fn($mp) => is_null(
+                                                                                                $mp->id_rombel,
+                                                                                            ) ||
+                                                                                                $mp->id_rombel ==
+                                                                                                    $rombel->id,
+                                                                                        ),
+                                                                                    );
+                                                                                })
+                                                                                ->filter(fn($arr) => !empty($arr))
+                                                                                ->sortKeys();
 
                                                                             $rombelPaneId =
                                                                                 'pane-rombel-' . $rombel->id;
@@ -649,11 +671,13 @@
     @include('matakuliah.partials.create-matkul', [
         'dosen' => $dosen,
         'prodi' => $allProdi,
+        'allRombel' => $allRombel, // untuk rombelDataCreate JSON
     ])
 
     @include('matakuliah.partials.edit-matkul', [
         'dosen' => $dosen,
         'prodi' => $allProdi,
+        'allRombel' => $allRombel, // untuk rombelData JSON
     ])
 @endsection
 

@@ -8,6 +8,10 @@
 
     $mappingsBySemester = MatkulProdiSemester::with(['matkul.dosen.user', 'matkul.prodiMappings'])
         ->where('id_prodi', $rombel->id_prodi)
+        ->where(function($q) use ($rombel) {
+            $q->whereNull('id_rombel')
+              ->orWhere('id_rombel', $rombel->id);
+        })
         ->orderBy('semester')
         ->orderBy('id_matkul')
         ->get()

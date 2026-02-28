@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int         $id
  * @property int         $id_matkul
  * @property int         $id_prodi
+ * @property int|null     $id_rombel
  * @property int         $semester
  * @property string|null $angkatan
  */
@@ -29,6 +30,7 @@ class MatkulProdiSemester extends Model
     protected $fillable = [
         'id_matkul',
         'id_prodi',
+        'id_rombel',
         'semester',
         'angkatan',
     ];
@@ -51,6 +53,11 @@ class MatkulProdiSemester extends Model
     public function prodi()
     {
         return $this->belongsTo(Prodi::class, 'id_prodi');
+    }
+
+    public function rombel()
+    {
+        return $this->belongsTo(Rombel::class, 'id_rombel');
     }
 
     // ============================================================

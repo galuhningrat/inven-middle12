@@ -161,10 +161,22 @@ Route::middleware(['auth', 'prevent-back-history'])->group(function () {
     // didaftarkan SEBELUM route parameter {matakuliah} / {id}
     // agar tidak tertangkap sebagai wildcard.
     // ============================================================
+    Route::get(
+        'matakuliah/rombel-by-prodi/{prodiId}',
+        [\App\Http\Controllers\Admin\MatkulController::class, 'getRombelByProdi']
+    )
+        ->name('matakuliah.rombel-by-prodi')
+        ->middleware(['auth', 'permission:kurikulum,read']);
     Route::get('/matakuliah', [MatkulController::class, 'index'])->name('matakuliah.index');
     Route::get('/matakuliah/all-data', [MatkulController::class, 'allData'])->name('matakuliah.all-data');
     Route::post('/matakuliah/store', [MatkulController::class, 'store'])->name('matakuliah.store');
-    Route::get('/matakuliah/{id}/edit-data', [MatkulController::class, 'editData'])->name('matakuliah.edit-data'); // ← NEW: JSON untuk modal edit
+    Route::get(
+        'matakuliah/rombel-by-prodi/{prodiId}',
+        [MatkulController::class, 'getRombelByProdi']
+    )
+        ->name('matakuliah.rombel-by-prodi')
+        ->middleware('permission:kurikulum,read');
+    Route::get('/matakuliah/{id}/edit-data', [MatkulController::class, 'editData'])->name('matakuliah.edit-data');
     Route::get('/matakuliah/{matakuliah}', [MatkulController::class, 'show'])->name('matakuliah.show');
     Route::put('/matakuliah/{matakuliah}', [MatkulController::class, 'update'])->name('matakuliah.update');
     Route::delete('/matakuliah/{matakuliah}', [MatkulController::class, 'destroy'])->name('matakuliah.destroy');

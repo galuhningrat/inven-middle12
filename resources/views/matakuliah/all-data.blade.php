@@ -265,7 +265,7 @@
                                                 data-kode="{{ $mk->kode_mk }}" data-nama="{{ $mk->nama_mk }}"
                                                 data-bobot="{{ $mk->bobot }}" data-jenis="{{ $mk->jenis }}"
                                                 data-id-dosen="{{ $mk->id_dosen }}"
-                                                data-mappings="{{ json_encode($mk->prodiMappings->map(fn($mp) => ['prodi_id' => $mp->id_prodi, 'semester' => $mp->semester])) }}">
+                                                data-mappings="{{ json_encode($mk->prodiMappings->map(fn($mp) => ['prodi_id' => $mp->id_prodi, 'semester' => $mp->semester, 'id_rombel' => $mp->id_rombel])) }}">
                                                 <i class="bi bi-pencil-fill fs-7"></i>
                                             </button>
 
@@ -294,9 +294,17 @@
         @include('matakuliah.partials.delete-matkul', ['m' => $mk])
     @endforeach
 
-    @include('matakuliah.partials.create-matkul', ['dosen' => $dosen, 'prodi' => $prodi])
+    @include('matakuliah.partials.create-matkul', [
+        'dosen' => $dosen,
+        'prodi' => $prodi,
+        'allRombel' => $allRombel ?? collect(),
+    ])
 
-    @include('matakuliah.partials.edit-matkul', ['dosen' => $dosen, 'prodi' => $prodi])
+    @include('matakuliah.partials.edit-matkul', [
+        'dosen' => $dosen,
+        'prodi' => $prodi,
+        'allRombel' => $allRombel ?? collect(),
+    ])
 @endsection
 
 @push('scripts')
